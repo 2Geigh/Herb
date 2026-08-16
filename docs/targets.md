@@ -6,3 +6,8 @@ spacehey.com
 kicya.net
 tamanotchi.world
 blackspace.lol
+petrapixel.neocities.org/indiewebdb
+theindieweb.com
+smallweb.cc
+untested.sonnet.io/notes/places-to-find-indie-web-content/
+indyzine.com
