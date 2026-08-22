@@ -1,0 +1,12 @@
+services:
+    crawler:
+        container_name: herb-crawler
+        build:
+            dockerfile: "./crawler/dockerfile"
+    # indexer:
+    #     container_name: herb-indexer
+    # client:
+    #     container_name: herb-client
+    database:
+        container_name: herb-database
+        image: mongo:8.3-noble
