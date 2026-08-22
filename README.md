@@ -25,4 +25,4 @@ Implemented in [Python](https://python.org).
 
 ### Client
 
-Implemented in [Typescript](https://typescriptlang.org) using the [Astro](https://astro.build) + [Svelte](https://svelte.dev).
+Implemented in [Java](https://java.com) using the [Spring](https://spring.io) framework. 
