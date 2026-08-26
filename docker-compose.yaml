@@ -8,6 +8,7 @@ services:
             PGUSER: ${DB_USERNAME}
             POSTGRES_PASSWORD: ${DB_PASSWORD}
             POSTGRES_DB: ${DB_NAME}
+            POSTGRES_PORT:
         volumes:
             - db-data:/var/lib/herb
         healthcheck:
@@ -16,11 +17,23 @@ services:
             timeout: 5s
             retries: 5
         ports:
-            - "3101:5432"
+            - "3020:5432"
 
     # backup:
     #     image: postgres:18.4-alpine
     #     container_name: herb-db-backup
+
+    crawler:
+        build:
+            context: ./crawler
+        container_name: herb-crawler
+        depends_on:
+            db:
+                condition: service_healthy
+        env_file:
+            - ./.env
+        ports:
+            - "3021:3001"
 
 volumes:
     db-data:

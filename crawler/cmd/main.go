@@ -1,7 +1,14 @@
 package main
 
-import "fmt"
+import (
+	"log"
+
+	"github.com/2Geigh/Herb/crawler/internal/database"
+)
 
 func main() {
-	fmt.Println("Hello from the Herb crawler!")
+	err := database.InitializeDB()
+	if err != nil {
+		log.Fatalf("connect to database failed: %v", err)
+	}
 }
