@@ -35,5 +35,11 @@ services:
         ports:
             - "3021:3001"
 
+    client:
+        image: amazoncorretto:26-alpine # OpenJDK distribution maintained by AWS
+        depends_on:
+            db:
+                condition: service_healthy
+
 volumes:
     db-data:
