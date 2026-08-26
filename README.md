@@ -19,7 +19,7 @@ Implemented in [Go](https://go.dev).
 
 ### Database
 
-Implemented with [MongoDB](https://github.com/mongodb/mongo).
+Implemented with [Postgresql](https://postgresql.org).
 
 ### Indexer
 

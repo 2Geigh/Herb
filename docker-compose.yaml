@@ -1,12 +1,26 @@
+name: "Herb"
+
 services:
-    crawler:
-        container_name: herb-crawler
-        build:
-            dockerfile: "./crawler/dockerfile"
-    # indexer:
-    #     container_name: herb-indexer
-    # client:
-    #     container_name: herb-client
-    database:
-        container_name: herb-database
-        image: mongo:8.3-noble
+    db:
+        image: postgres:18.4-alpine
+        container_name: herb-db
+        environment:
+            PGUSER: ${DB_USERNAME}
+            POSTGRES_PASSWORD: ${DB_PASSWORD}
+            POSTGRES_DB: ${DB_NAME}
+        volumes:
+            - db-data:/var/lib/herb
+        healthcheck:
+            test: ["CMD", "pg_isready"]
+            interval: 10s
+            timeout: 5s
+            retries: 5
+        ports:
+            - "3101:5432"
+
+    # backup:
+    #     image: postgres:18.4-alpine
+    #     container_name: herb-db-backup
+
+volumes:
+    db-data:
