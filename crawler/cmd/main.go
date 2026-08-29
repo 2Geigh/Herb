@@ -13,10 +13,10 @@ import (
 )
 
 type webpage struct {
-	url                string
-	title              string
-	date_discovered    time.Time
-	date_last_accessed time.Time
+	Url                string    `json:"url"`
+	Title              string    `json:"title"`
+	Date_discovered    time.Time `json:"date_discovered"`
+	Date_last_accessed time.Time `json:"date_last_accessed"`
 }
 
 func main() {
