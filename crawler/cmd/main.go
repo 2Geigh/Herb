@@ -5,11 +5,19 @@ import (
 	"log"
 	"net/http"
 	"sync"
+	"time"
 
 	"github.com/2Geigh/Herb/crawler/internal/database"
 	"golang.org/x/net/html"
 	"golang.org/x/net/html/atom"
 )
+
+type webpage struct {
+	url                string
+	title              string
+	date_discovered    time.Time
+	date_last_accessed time.Time
+}
 
 func main() {
 	var (
@@ -88,4 +96,8 @@ func crawl(seed_url string) {
 
 	// else
 	// return
+}
+
+func saveToDB(page webpage) {
+	database.DB.Exec("insert into")
 }

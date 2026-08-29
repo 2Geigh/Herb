@@ -2,15 +2,20 @@ package database
 
 import (
 	"database/sql"
+	"embed"
 	"fmt"
 	"log"
 	"os"
 
 	_ "github.com/lib/pq"
+	"github.com/pressly/goose/v3"
 )
 
 var (
 	DB *sql.DB = nil
+
+	//go:embed migrations/*.sql
+	embedMigrations embed.FS
 )
 
 func InitializeDB() error {
@@ -44,6 +49,29 @@ func InitializeDB() error {
 		return fmt.Errorf("verify database connection failed: %w", err)
 	}
 	log.Println("Database connection successful.")
+
+	log.Println("Executing migrations...")
+	err = migrate(DB)
+	if err != nil {
+		return fmt.Errorf("database migration(s) failed: %w", err)
+	}
+
+	return nil
+}
+
+func migrate(db *sql.DB) error {
+
+	goose.SetBaseFS(embedMigrations)
+
+	err := goose.SetDialect("postgres")
+	if err != nil {
+		return fmt.Errorf("Goose: set database dialect failed: %w", err)
+	}
+
+	err = goose.Up(db, "migrations")
+	if err != nil {
+		return fmt.Errorf("Goose: apply migrations failed: %w", err)
+	}
 
 	return nil
 }
