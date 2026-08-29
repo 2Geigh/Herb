@@ -42,7 +42,7 @@ func main() {
 func crawl(seed_url string) {
 	log.Println("Crawling", seed_url)
 
-	response, err := http.Get(seed_url) // get request to URL
+	response, err := http.Get(seed_url)
 	if err != nil {
 		log.Printf("[%s] GET request failed: %v", seed_url, err)
 	}
@@ -53,7 +53,10 @@ func crawl(seed_url string) {
 		log.Printf("[%s] parse HTML failed: %v", seed_url, err)
 	}
 
-	// var hyperlinks []string
+	// save page title
+
+	// save page body content
+
 	for n := range doc.Descendants() {
 		if n.Type == html.ElementNode && n.DataAtom == atom.A {
 			for _, a := range n.Attr {
@@ -82,20 +85,11 @@ func crawl(seed_url string) {
 					}
 
 					log.Printf("[%s] Found: %v", seed_url, newfoundLink)
-					// hyperlinks = append(hyperlinks, newfoundLink)
 					break
 				}
 			}
 		}
 	}
-
-	// if response is HTML:
-	// store page data in database
-	// find hyperlinks in HTML
-	// go crawl(link) for link in response's hyperlinks
-
-	// else
-	// return
 }
 
 func saveToDB(page webpage) {
