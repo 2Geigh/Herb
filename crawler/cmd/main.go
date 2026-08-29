@@ -92,6 +92,11 @@ func crawl(seed_url string) {
 	}
 }
 
-func saveToDB(page webpage) {
-	database.DB.Exec("insert into")
+func saveToDB(page webpage) error {
+	_, err := database.DB.Exec(`INSERT INTO Pages $1`, page)
+	if err != nil {
+		return fmt.Errorf("insert page into database failed: %w", err)
+	}
+
+	return nil
 }
