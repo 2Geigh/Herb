@@ -93,23 +93,23 @@ func findHyperlinks(root_node *html.Node, root_url url) []url {
 		hyperlinks []url
 	)
 
-	for n := range root_node.Descendants() {
+	for node := range root_node.Descendants() {
 		isAnchor :=
-			n.Type == html.ElementNode &&
-				n.DataAtom == atom.A
+			node.Type == html.ElementNode &&
+				node.DataAtom == atom.A
 
 		if !isAnchor {
 			continue
 		}
 
-		for _, a := range n.Attr {
-			if a.Key != "href" {
+		for _, attribute := range node.Attr {
+			if attribute.Key != "href" {
 				continue
 			}
 
 			var (
 				trimmedRootUrl url    = root_url
-				anchorHref     string = a.Val
+				anchorHref     string = attribute.Val
 				newfoundLink   url
 			)
 
