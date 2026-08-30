@@ -12,16 +12,43 @@ import (
 	"golang.org/x/net/html/atom"
 )
 
-type webpage struct {
-	Url                string    `json:"url"`
-	Title              string    `json:"title"`
-	Date_discovered    time.Time `json:"date_discovered"`
-	Date_last_accessed time.Time `json:"date_last_accessed"`
+type (
+	domain string
+	url    string
+
+	webpage struct {
+		Domain             domain    `json:"domain"`
+		Url                url       `json:"url"`
+		Title              string    `json:"title"`
+		Date_discovered    time.Time `json:"date_discovered"`
+		Date_last_accessed time.Time `json:"date_last_accessed"`
+	}
+
+	queue struct {
+		mu    sync.Mutex
+		links []url
+	}
+)
+
+func (q *queue) dequeue() url {
+	q.mu.Lock()
+	defer q.mu.Unlock()
+
+	dequeued := q.links[0]
+	q.links = q.links[1:]
+	return dequeued
+}
+
+func (q *queue) enqueue(urls []url) {
+	q.mu.Lock()
+	defer q.mu.Unlock()
+
+	q.links = append(q.links, urls...)
 }
 
 func main() {
 	var (
-		seed_urls = []string{"https://nicholasgarcia.com", "https://angeldolly.com/"}
+		seed_urls = []url{"https://nicholasgarcia.com", "https://angeldolly.com/"}
 		wg        sync.WaitGroup
 	)
 
@@ -39,10 +66,10 @@ func main() {
 	wg.Wait()
 }
 
-func crawl(seed_url string) {
+func crawl(seed_url url) {
 	log.Println("Crawling", seed_url)
 
-	response, err := http.Get(seed_url)
+	response, err := http.Get(string(seed_url))
 	if err != nil {
 		log.Printf("[%s] GET request failed: %v", seed_url, err)
 	}
@@ -57,39 +84,58 @@ func crawl(seed_url string) {
 
 	// save page body content
 
-	for n := range doc.Descendants() {
-		if n.Type == html.ElementNode && n.DataAtom == atom.A {
-			for _, a := range n.Attr {
-				if a.Key == "href" {
+	hyperlinks := findHyperlinks(doc, seed_url)
+	fmt.Println(hyperlinks)
+}
 
-					var (
-						trimmedSeedUrl string = seed_url
-						anchorHref     string = a.Val
-						newfoundLink   string
-					)
+func findHyperlinks(root_node *html.Node, root_url url) []url {
+	var (
+		hyperlinks []url
+	)
 
-					if len(anchorHref) < 2 {
-						break
-					}
+	for n := range root_node.Descendants() {
+		isAnchor :=
+			n.Type == html.ElementNode &&
+				n.DataAtom == atom.A
 
-					if string(seed_url[len(seed_url)-1]) == "/" {
-						trimmedSeedUrl = seed_url[0 : len(seed_url)-2]
-					}
+		if !isAnchor {
+			continue
+		}
 
-					if string(anchorHref[0]) == "/" { // ex: <a href="/about">
-						newfoundLink = trimmedSeedUrl + anchorHref
-					} else if string(anchorHref[0:4]) != "http" { // ex: <a href="intro.html">
-						newfoundLink = fmt.Sprintf("%s/%s", trimmedSeedUrl, anchorHref)
-					} else {
-						newfoundLink = anchorHref
-					}
-
-					log.Printf("[%s] Found: %v", seed_url, newfoundLink)
-					break
-				}
+		for _, a := range n.Attr {
+			if a.Key != "href" {
+				continue
 			}
+
+			var (
+				trimmedRootUrl url    = root_url
+				anchorHref     string = a.Val
+				newfoundLink   url
+			)
+
+			if len(anchorHref) < 2 {
+				break
+			}
+
+			if string(root_url[len(root_url)-1]) == "/" {
+				trimmedRootUrl = root_url[0 : len(root_url)-2]
+			}
+
+			if string(anchorHref[0]) == "/" { // ex: <a href="/about">
+				newfoundLink = url(string(trimmedRootUrl) + anchorHref)
+			} else if string(anchorHref[0:4]) != "http" { // ex: <a href="intro.html">
+				newfoundLink = url(fmt.Sprintf("%s/%s", trimmedRootUrl, anchorHref))
+			} else {
+				newfoundLink = url(anchorHref)
+			}
+
+			log.Printf("[%s] Found: %v", root_url, newfoundLink)
+			hyperlinks = append(hyperlinks, newfoundLink)
+			break
 		}
 	}
+
+	return hyperlinks
 }
 
 func saveToDB(page webpage) error {
