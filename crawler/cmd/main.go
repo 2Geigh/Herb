@@ -129,6 +129,10 @@ func findHyperlinks(root_node *html.Node, root_url url) []url {
 				newfoundLink = url(anchorHref)
 			}
 
+			// REMOVE ? QUERIES FROM URLs
+
+			// REMOVE mailto: AND ANY OTHER SUCH TYPES OF URLS
+
 			log.Printf("[%s] Found: %v", root_url, newfoundLink)
 			hyperlinks = append(hyperlinks, newfoundLink)
 			break
