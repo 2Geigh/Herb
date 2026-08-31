@@ -30,6 +30,10 @@ type (
 	}
 )
 
+const (
+	CRAWLER_POLITENESS_SLEEP_TIME = 12 * time.Second
+)
+
 func (q *queue) dequeue() url {
 	q.mu.Lock()
 	defer q.mu.Unlock()
@@ -48,8 +52,9 @@ func (q *queue) enqueue(urls []url) {
 
 func main() {
 	var (
-		seed_urls = []url{"https://nicholasgarcia.com", "https://angeldolly.com/"}
-		wg        sync.WaitGroup
+		seed_urls = []url{"https://nicholasgarcia.com"} //  "https://angeldolly.com/"
+
+		wg sync.WaitGroup
 	)
 
 	err := database.InitializeDB()
@@ -67,26 +72,54 @@ func main() {
 }
 
 func crawl(seed_url url) {
-	log.Println("Crawling", seed_url)
+	var (
+		pagesQueue queue = queue{links: []url{seed_url}, mu: sync.Mutex{}}
+		page       webpage
+	)
 
-	response, err := http.Get(string(seed_url))
-	if err != nil {
-		log.Printf("[%s] GET request failed: %v", seed_url, err)
+	for len(pagesQueue.links) > 0 {
+		currentUrl := pagesQueue.dequeue()
+		log.Println("Crawling", currentUrl)
+
+		response, err := http.Get(string(currentUrl))
+		if err != nil {
+			log.Printf("[%s] GET request failed: %v", currentUrl, err)
+			continue
+		}
+		defer response.Body.Close()
+
+		doc, err := html.Parse(response.Body)
+		if err != nil {
+			log.Printf("[%s] parse HTML failed: %v", currentUrl, err)
+			continue
+		}
+
+		// save page title
+		// page.Title = getPageTitle(doc)
+
+		// save page body content
+
+		hyperlinks := findHyperlinks(doc, currentUrl)
+		pagesQueue.enqueue(hyperlinks)
+		// fmt.Println(hyperlinks)
+		fmt.Println(currentUrl, "title", page.Title)
+		fmt.Println("queue length:", len(pagesQueue.links))
+
+		time.Sleep(CRAWLER_POLITENESS_SLEEP_TIME)
 	}
-	defer response.Body.Close()
 
-	doc, err := html.Parse(response.Body)
-	if err != nil {
-		log.Printf("[%s] parse HTML failed: %v", seed_url, err)
-	}
-
-	// save page title
-
-	// save page body content
-
-	hyperlinks := findHyperlinks(doc, seed_url)
-	fmt.Println(hyperlinks)
 }
+
+// func getPageTitle(root_node *html.Node) string {
+// 	for node := range root_node.Descendants() {
+// 		isTitle := node.Type == html.DocumentNode
+// 		if isTitle {
+// 			return node.Data
+// 		}
+// 	}
+//
+// 	return ""
+// }
 
 func findHyperlinks(root_node *html.Node, root_url url) []url {
 	var (
@@ -133,7 +166,7 @@ func findHyperlinks(root_node *html.Node, root_url url) []url {
 
 			// REMOVE mailto: AND ANY OTHER SUCH TYPES OF URLS
 
-			log.Printf("[%s] Found: %v", root_url, newfoundLink)
+			// log.Printf("[%s] Found: %v", root_url, newfoundLink)
 			hyperlinks = append(hyperlinks, newfoundLink)
 			break
 		}
