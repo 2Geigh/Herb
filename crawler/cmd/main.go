@@ -52,7 +52,7 @@ func (q *queue) enqueue(urls []url) {
 
 func main() {
 	var (
-		seed_urls = []url{"https://nicholasgarcia.com"} //  "https://angeldolly.com/"
+		seed_urls = []url{"https://nicholasgarcia.com", "https://angeldolly.com/"}
 
 		wg sync.WaitGroup
 	)
@@ -66,6 +66,7 @@ func main() {
 	for _, seed_url := range seed_urls {
 		wg.Add(1)
 		go crawl(seed_url)
+		time.Sleep(CRAWLER_POLITENESS_SLEEP_TIME / 2)
 	}
 
 	wg.Wait()
@@ -95,13 +96,12 @@ func crawl(seed_url url) {
 		}
 
 		// save page title
-		// page.Title = getPageTitle(doc)
+		page.Title = getPageTitle(doc)
 
 		// save page body content
 
 		hyperlinks := findHyperlinks(doc, currentUrl)
 		pagesQueue.enqueue(hyperlinks)
-		// fmt.Println(hyperlinks)
 		fmt.Println(currentUrl, "title", page.Title)
 		fmt.Println("queue length:", len(pagesQueue.links))
 
@@ -110,16 +110,38 @@ func crawl(seed_url url) {
 
 }
 
-// func getPageTitle(root_node *html.Node) string {
-// 	for node := range root_node.Descendants() {
-// 		isTitle := node.Type == html.DocumentNode
-// 		if isTitle {
-// 			return node.Data
-// 		}
-// 	}
-//
-// 	return ""
-// }
+func getPageTitle(root_node *html.Node) string {
+	for node := range root_node.Descendants() {
+		var (
+			isTitle bool = node.DataAtom == atom.Title
+			isH1    bool = node.DataAtom == atom.H1
+			isH2    bool = node.DataAtom == atom.H2
+			isH3    bool = node.DataAtom == atom.H3
+		)
+
+		if isTitle {
+
+			return node.FirstChild.Data
+		}
+
+		// If no <title> found, use <h1> as fallback
+		if isH1 {
+			return node.FirstChild.Data
+		}
+
+		// If no <h1> found, use <h2> as fallback
+		if isH2 {
+			return node.FirstChild.Data
+		}
+
+		// If no <h2> found, use <h3> as fallback
+		if isH3 {
+			return node.FirstChild.Data
+		}
+	}
+
+	return ""
+}
 
 func findHyperlinks(root_node *html.Node, root_url url) []url {
 	var (
