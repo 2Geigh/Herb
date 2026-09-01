@@ -12,3 +12,6 @@ smallweb.cc
 untested.sonnet.io/notes/places-to-find-indie-web-content/
 indyzine.com
 samsolarsystem.neocities.org/Buttonwall
+0xffff.one
+v2ex.com
+hotlinewebring.club
