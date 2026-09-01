@@ -92,14 +92,22 @@ func crawl(seed_url url, queue *queueOfPages, wg *sync.WaitGroup) {
 		)
 
 		currentUrl := queue.dequeue()
-		log.Println("Crawling", currentUrl)
+		log.Println("url:   ", currentUrl)
 
 		response, err := http.Get(string(currentUrl))
 		if err != nil {
-			log.Printf("[%s] GET request failed: %v", currentUrl, err)
+			log.Printf("[%s] GET request unfulfilled: %v", currentUrl, err)
 			continue
 		}
 		defer response.Body.Close()
+
+		var (
+			isRequestSuccessful bool = response.StatusCode >= 200 && response.StatusCode < 300
+		)
+		if !isRequestSuccessful {
+			log.Printf("[%s] request unsuccessful: %s", currentUrl, response.Status)
+			continue
+		}
 
 		doc, err := html.Parse(response.Body)
 		if err != nil {
@@ -114,8 +122,10 @@ func crawl(seed_url url, queue *queueOfPages, wg *sync.WaitGroup) {
 
 		hyperlinks := findHyperlinks(doc, currentUrl)
 		queue.enqueue(hyperlinks)
-		fmt.Println(currentUrl, "title", page.Title)
-		fmt.Println("queue length:", len(queue.links))
+
+		log.Println("title: ", page.Title)
+		log.Println("queue: ", len(queue.links), "links long")
+		log.Println()
 
 		time.Sleep(CRAWLER_POLITENESS_SLEEP_TIME)
 	}
@@ -219,7 +229,7 @@ func findHyperlinks(root_node *html.Node, root_url url) []url {
 			// log.Println("anchorHref", anchorHref)
 			// log.Println("newfoundLink", newfoundLink)
 			// log.Println("isAlternativeUriScheme", isAlternativeUriScheme)
-			log.Printf("[%s] Found: %v", root_url, newfoundLink)
+			// log.Printf("[%s] Found: %v", root_url, newfoundLink)
 			hyperlinks = append(hyperlinks, newfoundLink)
 			break
 		}
