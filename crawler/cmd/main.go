@@ -20,6 +20,7 @@ type (
 		Domain             domain    `json:"domain"`
 		Url                url       `json:"url"`
 		Title              string    `json:"title"`
+		Outneighbours      []url     `json:"outneighbours"`
 		Date_discovered    time.Time `json:"date_discovered"`
 		Date_last_accessed time.Time `json:"date_last_accessed"`
 	}
@@ -92,7 +93,6 @@ func crawl(seed_url url, queue *queueOfPages, wg *sync.WaitGroup) {
 		)
 
 		currentUrl := queue.dequeue()
-		log.Println("url:   ", currentUrl)
 
 		response, err := http.Get(string(currentUrl))
 		if err != nil {
@@ -123,9 +123,10 @@ func crawl(seed_url url, queue *queueOfPages, wg *sync.WaitGroup) {
 		hyperlinks := findHyperlinks(doc, currentUrl)
 		queue.enqueue(hyperlinks)
 
+		log.Println()
+		log.Println("url:   ", currentUrl)
 		log.Println("title: ", page.Title)
 		log.Println("queue: ", len(queue.links), "links long")
-		log.Println()
 
 		time.Sleep(CRAWLER_POLITENESS_SLEEP_TIME)
 	}
