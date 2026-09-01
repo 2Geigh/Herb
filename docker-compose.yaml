@@ -26,6 +26,7 @@ services:
     crawler:
         build:
             context: ./crawler
+            dockerfile: ./build/dockerfile
         container_name: herb-crawler
         depends_on:
             db:

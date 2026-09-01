@@ -1,6 +1,6 @@
 FROM golang:1.26.5-alpine AS base
 WORKDIR /usr/bin/local/Herb/crawler
-COPY . .
+COPY .. .
 RUN CGO_ENABLED=0 GOOS=linux go build -o ./bin/main.out ./cmd/main.go 
 
 FROM alpine:3.24 AS dist
