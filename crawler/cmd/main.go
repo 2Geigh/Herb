@@ -24,17 +24,28 @@ type (
 		Date_last_accessed time.Time `json:"date_last_accessed"`
 	}
 
-	queue struct {
+	queueOfPages struct {
 		mu    sync.Mutex
 		links []url
 	}
 )
 
 const (
-	CRAWLER_POLITENESS_SLEEP_TIME = 12 * time.Second
+	CRAWLER_POLITENESS_SLEEP_TIME = 15 * time.Second
 )
 
-func (q *queue) dequeue() url {
+var (
+	seed_urls = []url{
+		"https://nicholasgarcia.com",
+		"https://angeldolly.com/",
+		"https://nyscyra.net/",
+		"https://0xffff.one",
+		"https://v2ex.com",
+	}
+	pagesQueue = queueOfPages{links: []url{}, mu: sync.Mutex{}}
+)
+
+func (q *queueOfPages) dequeue() url {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
@@ -43,7 +54,7 @@ func (q *queue) dequeue() url {
 	return dequeued
 }
 
-func (q *queue) enqueue(urls []url) {
+func (q *queueOfPages) enqueue(urls []url) {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
@@ -52,8 +63,6 @@ func (q *queue) enqueue(urls []url) {
 
 func main() {
 	var (
-		seed_urls = []url{"https://nicholasgarcia.com", "https://angeldolly.com/"}
-
 		wg sync.WaitGroup
 	)
 
@@ -65,21 +74,24 @@ func main() {
 
 	for _, seed_url := range seed_urls {
 		wg.Add(1)
-		go crawl(seed_url)
+		go crawl(seed_url, &pagesQueue, &wg)
 		time.Sleep(CRAWLER_POLITENESS_SLEEP_TIME / 2)
 	}
 
 	wg.Wait()
 }
 
-func crawl(seed_url url) {
-	var (
-		pagesQueue queue = queue{links: []url{seed_url}, mu: sync.Mutex{}}
-		page       webpage
-	)
+func crawl(seed_url url, queue *queueOfPages, wg *sync.WaitGroup) {
+	defer wg.Done()
 
-	for len(pagesQueue.links) > 0 {
-		currentUrl := pagesQueue.dequeue()
+	queue.enqueue([]url{seed_url})
+
+	for len(queue.links) > 0 {
+		var (
+			page webpage
+		)
+
+		currentUrl := queue.dequeue()
 		log.Println("Crawling", currentUrl)
 
 		response, err := http.Get(string(currentUrl))
@@ -101,9 +113,9 @@ func crawl(seed_url url) {
 		// save page body content
 
 		hyperlinks := findHyperlinks(doc, currentUrl)
-		pagesQueue.enqueue(hyperlinks)
+		queue.enqueue(hyperlinks)
 		fmt.Println(currentUrl, "title", page.Title)
-		fmt.Println("queue length:", len(pagesQueue.links))
+		fmt.Println("queue length:", len(queue.links))
 
 		time.Sleep(CRAWLER_POLITENESS_SLEEP_TIME)
 	}
@@ -120,7 +132,6 @@ func getPageTitle(root_node *html.Node) string {
 		)
 
 		if isTitle {
-
 			return node.FirstChild.Data
 		}
 
