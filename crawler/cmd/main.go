@@ -184,7 +184,7 @@ func findHyperlinks(root_node *html.Node, root_url url) []url {
 			}
 
 			if string(root_url[len(root_url)-1]) == "/" {
-				trimmedRootUrl = root_url[0 : len(root_url)-2]
+				trimmedRootUrl = root_url[0 : len(root_url)-1]
 			}
 
 			if string(anchorHref[0]) == "/" { // ex: <a href="/about">
@@ -199,6 +199,11 @@ func findHyperlinks(root_node *html.Node, root_url url) []url {
 
 			// REMOVE mailto: AND ANY OTHER SUCH TYPES OF URLS
 
+			log.Println()
+			log.Println("root_url", root_url)
+			log.Println("trimmedRootUrl", trimmedRootUrl)
+			log.Println("anchorHref", anchorHref)
+			log.Println("newfoundLink", newfoundLink)
 			// log.Printf("[%s] Found: %v", root_url, newfoundLink)
 			hyperlinks = append(hyperlinks, newfoundLink)
 			break
