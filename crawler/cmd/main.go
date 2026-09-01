@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"slices"
 	"sync"
 	"time"
 
@@ -32,16 +33,17 @@ type (
 )
 
 const (
-	CRAWLER_POLITENESS_SLEEP_TIME = 15 * time.Second
+	CRAWLER_POLITENESS_SLEEP_TIME          = 15 * time.Second
+	QUEUE_CLEANUP_THRESHOLD_ITERATION uint = 25
 )
 
 var (
 	seed_urls = []url{
-		// "https://nicholasgarcia.com",
+		"https://nicholasgarcia.com",
 		"https://angeldolly.com/",
 		"https://nyscyra.net/",
 		"https://0xffff.one",
-		// "https://v2ex.com",
+		"https://v2ex.com",
 	}
 	pagesQueue = queueOfPages{links: []url{}, mu: sync.Mutex{}}
 )
@@ -55,6 +57,27 @@ func (q *queueOfPages) dequeue() url {
 	return dequeued
 }
 
+func (q *queueOfPages) removeDuplicateLinks() {
+	var (
+		oldLen = len(q.links)
+		newLen int
+		diff   int
+	)
+
+	log.Println("Removing duplicates from queue...")
+	q.mu.Lock()
+
+	slices.Sort(q.links)
+	q.links = slices.Compact(q.links)
+
+	newLen = len(q.links)
+	diff = oldLen - newLen
+
+	q.mu.Unlock()
+	log.Printf("Removed %d duplicate links from queue", diff)
+
+}
+
 func (q *queueOfPages) enqueue(urls []url) {
 	q.mu.Lock()
 	defer q.mu.Unlock()
@@ -64,7 +87,9 @@ func (q *queueOfPages) enqueue(urls []url) {
 
 func main() {
 	var (
-		wg sync.WaitGroup
+		crwaler_id     uint = 0
+		crawl_iterator uint = 0
+		wg             sync.WaitGroup
 	)
 
 	err := database.InitializeDB()
@@ -75,14 +100,26 @@ func main() {
 
 	for _, seed_url := range seed_urls {
 		wg.Add(1)
-		go crawl(seed_url, &pagesQueue, &wg)
+		crwaler_id += 1
+
+		go crawl(seed_url, &pagesQueue, crwaler_id, &crawl_iterator, &wg)
+
 		time.Sleep(CRAWLER_POLITENESS_SLEEP_TIME / 2)
 	}
+
+	go func() {
+		for {
+			if crawl_iterator >= QUEUE_CLEANUP_THRESHOLD_ITERATION {
+				pagesQueue.removeDuplicateLinks()
+				crawl_iterator = 0
+			}
+		}
+	}()
 
 	wg.Wait()
 }
 
-func crawl(seed_url url, queue *queueOfPages, wg *sync.WaitGroup) {
+func crawl(seed_url url, queue *queueOfPages, crawler_id uint, iterator *uint, wg *sync.WaitGroup) {
 	defer wg.Done()
 
 	queue.enqueue([]url{seed_url})
@@ -93,6 +130,10 @@ func crawl(seed_url url, queue *queueOfPages, wg *sync.WaitGroup) {
 		)
 
 		currentUrl := queue.dequeue()
+
+		// IF THIS URL'S DOMAIN HAS BEEN HIT WITHIN
+		// THE LAST POLITE_TIME:
+		// time.Sleep(CRAWLER_POLITENESS_SLEEP_TIME)
 
 		response, err := http.Get(string(currentUrl))
 		if err != nil {
@@ -122,8 +163,11 @@ func crawl(seed_url url, queue *queueOfPages, wg *sync.WaitGroup) {
 
 		hyperlinks := findHyperlinks(doc, currentUrl)
 		queue.enqueue(hyperlinks)
+		*iterator += 1
 
 		log.Println()
+		log.Println("id:    ", crawler_id)
+		log.Println("iter:  ", *iterator)
 		log.Println("url:   ", currentUrl)
 		log.Println("title: ", page.Title)
 		log.Println("queue: ", len(queue.links), "links long")
