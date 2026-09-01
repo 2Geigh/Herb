@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"slices"
 	"sync"
 	"time"
 
@@ -33,8 +32,8 @@ type (
 )
 
 const (
-	CRAWLER_POLITENESS_SLEEP_TIME          = 15 * time.Second
-	QUEUE_CLEANUP_THRESHOLD_ITERATION uint = 25
+	CRAWLER_POLITENESS_SLEEP_TIME     time.Duration = 15 * time.Second
+	CRAWLER_MINIMUM_OLDNESS_THRESHOLD time.Duration = 2592000 * time.Second // 30 days
 )
 
 var (
@@ -55,27 +54,6 @@ func (q *queueOfPages) dequeue() url {
 	dequeued := q.links[0]
 	q.links = q.links[1:]
 	return dequeued
-}
-
-func (q *queueOfPages) removeDuplicateLinks() {
-	var (
-		oldLen = len(q.links)
-		newLen int
-		diff   int
-	)
-
-	log.Println("Removing duplicates from queue...")
-	q.mu.Lock()
-
-	slices.Sort(q.links)
-	q.links = slices.Compact(q.links)
-
-	newLen = len(q.links)
-	diff = oldLen - newLen
-
-	q.mu.Unlock()
-	log.Printf("Removed %d duplicate links from queue", diff)
-
 }
 
 func (q *queueOfPages) enqueue(urls []url) {
@@ -107,15 +85,6 @@ func main() {
 		time.Sleep(CRAWLER_POLITENESS_SLEEP_TIME / 2)
 	}
 
-	go func() {
-		for {
-			if crawl_iterator >= QUEUE_CLEANUP_THRESHOLD_ITERATION {
-				pagesQueue.removeDuplicateLinks()
-				crawl_iterator = 0
-			}
-		}
-	}()
-
 	wg.Wait()
 }
 
@@ -131,9 +100,13 @@ func crawl(seed_url url, queue *queueOfPages, crawler_id uint, iterator *uint, w
 
 		currentUrl := queue.dequeue()
 
-		// IF THIS URL'S DOMAIN HAS BEEN HIT WITHIN
-		// THE LAST POLITE_TIME:
-		// time.Sleep(CRAWLER_POLITENESS_SLEEP_TIME)
+		// IF THIS URL'S DOMAIN HAS BEEN HIT
+		// WITHIN THE LAST CRAWLER_POLITENESS_SLEEP_TIME (15 seconds):
+		time.Sleep(CRAWLER_POLITENESS_SLEEP_TIME)
+
+		// IF THIS URL HAS BEEN HIT
+		// WITHIN THE LAST CRAWLER_MINIMUM_OLDNESS_THRESHOLD (30 days):
+		// continue
 
 		response, err := http.Get(string(currentUrl))
 		if err != nil {
