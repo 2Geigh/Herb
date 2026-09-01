@@ -36,11 +36,11 @@ const (
 
 var (
 	seed_urls = []url{
-		"https://nicholasgarcia.com",
+		// "https://nicholasgarcia.com",
 		"https://angeldolly.com/",
 		"https://nyscyra.net/",
 		"https://0xffff.one",
-		"https://v2ex.com",
+		// "https://v2ex.com",
 	}
 	pagesQueue = queueOfPages{links: []url{}, mu: sync.Mutex{}}
 )
@@ -180,7 +180,7 @@ func findHyperlinks(root_node *html.Node, root_url url) []url {
 			)
 
 			if len(anchorHref) < 2 {
-				break
+				continue
 			}
 
 			if string(root_url[len(root_url)-1]) == "/" {
@@ -189,22 +189,37 @@ func findHyperlinks(root_node *html.Node, root_url url) []url {
 
 			if string(anchorHref[0]) == "/" { // ex: <a href="/about">
 				newfoundLink = url(string(trimmedRootUrl) + anchorHref)
-			} else if string(anchorHref[0:4]) != "http" { // ex: <a href="intro.html">
+			} else if len(anchorHref) >= len("http") &&
+				string(anchorHref[0:len("http")]) != "http" { // ex: <a href="intro.html">
 				newfoundLink = url(fmt.Sprintf("%s/%s", trimmedRootUrl, anchorHref))
 			} else {
 				newfoundLink = url(anchorHref)
+			}
+
+			if len(newfoundLink) < len("http://") {
+				continue
+			}
+
+			var (
+				isHttpUriScheme        bool = len(anchorHref) >= len("http") && (anchorHref[0:len("http")] == "http")
+				isHttpsUriScheme       bool = len(anchorHref) >= len("https") && (anchorHref[0:len("https")] == "https")
+				isAlternativeUriScheme bool = !isHttpUriScheme && !isHttpsUriScheme
+			)
+			if isAlternativeUriScheme {
+				continue
 			}
 
 			// REMOVE ? QUERIES FROM URLs
 
 			// REMOVE mailto: AND ANY OTHER SUCH TYPES OF URLS
 
-			log.Println()
-			log.Println("root_url", root_url)
-			log.Println("trimmedRootUrl", trimmedRootUrl)
-			log.Println("anchorHref", anchorHref)
-			log.Println("newfoundLink", newfoundLink)
-			// log.Printf("[%s] Found: %v", root_url, newfoundLink)
+			// log.Println()
+			// log.Println("root_url", root_url)
+			// log.Println("trimmedRootUrl", trimmedRootUrl)
+			// log.Println("anchorHref", anchorHref)
+			// log.Println("newfoundLink", newfoundLink)
+			// log.Println("isAlternativeUriScheme", isAlternativeUriScheme)
+			log.Printf("[%s] Found: %v", root_url, newfoundLink)
 			hyperlinks = append(hyperlinks, newfoundLink)
 			break
 		}
