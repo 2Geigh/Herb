@@ -247,30 +247,6 @@ func parsePageBody(root_node *html.Node) (string, error) {
 		return sb.String(), fmt.Errorf("no <body> node found")
 	}
 
-	var (
-		nonContentNodes = map[atom.Atom][]*html.Node{
-			atom.Area:    {},
-			atom.Audio:   {},
-			atom.B:       {},
-			atom.Canvas:  {},
-			atom.Command: {},
-			atom.Div:     {},
-			atom.Embed:   {},
-			atom.I:       {},
-			atom.Iframe:  {},
-			atom.Img:     {},
-			atom.Math:    {},
-			atom.Map:     {},
-			atom.Object:  {},
-			atom.Picture: {},
-			atom.Script:  {},
-			atom.Source:  {},
-			atom.Style:   {},
-			atom.Svg:     {},
-			atom.Track:   {},
-			atom.Video:   {},
-		}
-	)
 	for node := range body_node.Descendants() {
 		var (
 			isBodyText = node.DataAtom != atom.Script &&
@@ -298,47 +274,31 @@ func parsePageBody(root_node *html.Node) (string, error) {
 				node.Type != html.CommentNode
 		)
 
+		if !isBodyText {
+			continue
+		}
+
 		if node.FirstChild == nil {
 			continue
 		}
 
-		if !isBodyText {
-			nonContentNodes[node.DataAtom] = append(nonContentNodes[node.DataAtom], node)
+		if node.FirstChild.Type != html.TextNode {
 			continue
 		}
 
 		fmt.Println()
-		fmt.Println("DATAATOM", node.DataAtom)
-		fmt.Println("DATATYPE", node.Type)
+		fmt.Println("               DATA", strings.TrimSpace(node.Data))
+		fmt.Println("           DATAATOM", node.DataAtom)
+		fmt.Println("           DATATYPE", node.Type)
+		fmt.Println("    FIRSTCHILD_DATA", strings.TrimSpace(node.FirstChild.Data))
 		fmt.Println("FIRSTCHILD_DATAATOM", node.FirstChild.DataAtom)
 		fmt.Println("FIRSTCHILD_DATATYPE", node.FirstChild.Type)
 
-		if node.FirstChild.Type != html.TextNode {
-			continue
-		}
 		_, err = sb.WriteString(fmt.Sprintf("%s ", strings.TrimSpace(node.FirstChild.Data)))
 		if err != nil {
 			err = fmt.Errorf("write to string builder failed: %w", err)
 		}
 	}
-
-	// for node := range body_node.Descendants() {
-
-	// 	_, abscent := nonContentNodes[node.DataAtom]
-	// 	if !abscent {
-	// 		continue
-	// 	}
-
-	// 	// if node.FirstChild == nil {
-	// 	// 	continue
-	// 	// }
-
-	// fmt.Println("DATAATOM", node.DataAtom)
-	// 	_, err = sb.WriteString(fmt.Sprintf("%s ", strings.TrimSpace(node.FirstChild.Data)))
-	// 	if err != nil {
-	// 		err = fmt.Errorf("write to string builder failed: %w", err)
-	// 	}
-	// }
 
 	return strings.TrimSpace(sb.String()), err
 }
