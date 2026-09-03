@@ -133,14 +133,13 @@ func crawl(seed_url url, queue *queueOfPages, crawler_id uint, iterator *uint, w
 			continue
 		}
 
-		// var bodyNode *html.Node
-		page.Title, page.Description, _ = parsePageMetadata(doc)
+		page.Title, page.Description = parsePageMetadata(doc)
 
-		// page.Body = parsePageBody(bodyNode)
-		// if err != nil {
-		// 	log.Printf("[%s] parse body content failed: %v", currentUrl, err)
-		// 	continue
-		// }
+		page.Body, err = parsePageBody(doc)
+		if err != nil {
+			log.Printf("[%s] parse body content failed: %v", currentUrl, err)
+			continue
+		}
 
 		hyperlinks := findHyperlinks(doc, currentUrl)
 		queue.enqueue(hyperlinks)
@@ -151,8 +150,8 @@ func crawl(seed_url url, queue *queueOfPages, crawler_id uint, iterator *uint, w
 		log.Println("iter:  ", *iterator)
 		log.Println("url:   ", currentUrl)
 		log.Println("title: ", page.Title)
-		log.Println("description: ", page.Description)
-		log.Println("body:  ", "")
+		log.Println("desc:  ", page.Description)
+		log.Println("body:  ", page.Body)
 		log.Println("queue: ", len(queue.links), "links long")
 
 		time.Sleep(CRAWLER_POLITENESS_SLEEP_TIME)
@@ -160,12 +159,10 @@ func crawl(seed_url url, queue *queueOfPages, crawler_id uint, iterator *uint, w
 
 }
 
-func parsePageMetadata(root_node *html.Node) (string, string, *html.Node) {
+func parsePageMetadata(root_node *html.Node) (string, string) {
 	var (
 		pageTitle       string
 		pageDescription string
-
-		bodyNode *html.Node
 	)
 
 	for node := range root_node.Descendants() {
@@ -180,7 +177,7 @@ func parsePageMetadata(root_node *html.Node) (string, string, *html.Node) {
 
 		// No point in continuing to iterate over the loop
 		// if everything has already been found
-		if pageTitle != "" && pageDescription != "" && bodyNode != nil {
+		if pageTitle != "" && pageDescription != "" {
 			break
 		}
 
@@ -225,56 +222,75 @@ func parsePageMetadata(root_node *html.Node) (string, string, *html.Node) {
 		break
 	}
 
-	return pageTitle, pageDescription, bodyNode
+	return pageTitle, pageDescription
 }
 
-func parsePageBody(bodyNode *html.Node) string {
+func parsePageBody(root_node *html.Node) (string, error) {
 	var (
-		isBody bool = bodyNode.DataAtom == atom.Body
+		body_node *html.Node
 
-		sb strings.Builder
+		sb  strings.Builder
+		err error
 	)
 
-	if !isBody {
-		return ""
+	// Find <body> node
+	for node := range root_node.Descendants() {
+		if node.DataAtom != atom.Body {
+			continue
+		}
+
+		body_node = node
+		break
 	}
 
-	for sub_node := range bodyNode.Descendants() {
-		// var (
-		// 	isBodyText = sub_node.DataAtom != atom.Script &&
-		// 		sub_node.DataAtom != atom.Canvas &&
-		// 		sub_node.DataAtom != atom.Svg &&
-		// 		sub_node.DataAtom != atom.Math &&
-		// 		sub_node.DataAtom != atom.Embed &&
-		// 		sub_node.DataAtom != atom.Iframe &&
-		// 		sub_node.DataAtom != atom.Object &&
-		// 		sub_node.DataAtom != atom.Picture &&
-		// 		sub_node.DataAtom != atom.Source &&
-
-		// 		sub_node.DataAtom != atom.Area &&
-		// 		sub_node.DataAtom != atom.Audio &&
-		// 		sub_node.DataAtom != atom.Img &&
-		// 		sub_node.DataAtom != atom.Map &&
-		// 		sub_node.DataAtom != atom.Track &&
-		// 		sub_node.DataAtom != atom.Video
-		// )
-
-		// if sub_node.FirstChild == nil {
-		// 	continue
-		// }
-
-		// if isBodyText {
-		_, _ = sb.WriteString(fmt.Sprintf("%s ", strings.TrimSpace(sub_node.FirstChild.Data)))
-		// }
-		// if err != nil {
-		// 	return sb.String(), fmt.Errorf("write to string builder failed: %w", err)
-		// }
-
+	if body_node == nil {
+		return sb.String(), fmt.Errorf("no <body> node found")
 	}
 
-	return strings.TrimSpace(sb.String())
+	for node := range body_node.Descendants() {
+		var (
+			isBodyText = node.DataAtom != atom.Script &&
+				node.DataAtom != atom.Style &&
 
+				node.DataAtom != atom.Math &&
+				node.DataAtom != atom.Embed &&
+				node.DataAtom != atom.Iframe &&
+				node.DataAtom != atom.Object &&
+				node.DataAtom != atom.Picture &&
+				node.DataAtom != atom.Source &&
+
+				node.DataAtom != atom.Area &&
+				node.DataAtom != atom.Audio &&
+				node.DataAtom != atom.B &&
+				node.DataAtom != atom.Canvas &&
+				node.DataAtom != atom.Command &&
+				node.DataAtom != atom.I &&
+				node.DataAtom != atom.Img &&
+				node.DataAtom != atom.Map &&
+				node.DataAtom != atom.Svg &&
+				node.DataAtom != atom.Track &&
+				node.DataAtom != atom.Video &&
+
+				node.Type != html.CommentNode
+		)
+
+		if node.FirstChild == nil {
+			continue
+		}
+
+		if !isBodyText {
+			continue
+		}
+
+		_, err = sb.WriteString(fmt.Sprintf("%s ", strings.TrimSpace(node.FirstChild.Data)))
+		if err != nil {
+			err = fmt.Errorf("write to string builder failed: %w", err)
+		}
+	}
+	return strings.TrimSpace(sb.String()), err
 }
+
+// return strings.TrimSpace(sb.String()), err
 
 func findHyperlinks(root_node *html.Node, root_url url) []url {
 	var (
