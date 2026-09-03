@@ -196,25 +196,21 @@ func parsePageMetadata(root_node *html.Node) (string, string, *html.Node) {
 		}
 
 		// Get page description
-		if node.DataAtom == atom.Meta {
+		for _, attribute := range node.Attr {
 			var (
-				isMetaDescription bool = false
+				isMetaDescription bool = node.DataAtom == atom.Meta &&
+					strings.ToLower(attribute.Key) == "name" &&
+					strings.ToLower(attribute.Val) == "description"
 			)
 
+			if !isMetaDescription {
+				continue
+			}
+
 			for _, attribute := range node.Attr {
-				if strings.ToLower(attribute.Key) == "name" && strings.ToLower(attribute.Val) == "description" {
-					isMetaDescription = true
-				}
-
-				if !isMetaDescription {
-					continue
-				}
-
-				for _, attribute := range node.Attr {
-					if strings.ToLower(attribute.Key) == "content" {
-						pageDescription = strings.TrimSpace(attribute.Val)
-						break
-					}
+				if strings.ToLower(attribute.Key) == "content" {
+					pageDescription = strings.TrimSpace(attribute.Val)
+					break
 				}
 			}
 
