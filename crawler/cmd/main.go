@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
@@ -19,7 +20,9 @@ type (
 	webpage struct {
 		Domain             domain    `json:"domain"`
 		Url                url       `json:"url"`
+		Body               string    `json:"body"`
 		Title              string    `json:"title"`
+		Description        string    `json:"description"`
 		Outneighbours      []url     `json:"outneighbours"`
 		Date_discovered    time.Time `json:"date_discovered"`
 		Date_last_accessed time.Time `json:"date_last_accessed"`
@@ -32,7 +35,7 @@ type (
 )
 
 const (
-	CRAWLER_POLITENESS_SLEEP_TIME     time.Duration = 15 * time.Second
+	CRAWLER_POLITENESS_SLEEP_TIME     time.Duration = 8 * time.Second
 	CRAWLER_MINIMUM_OLDNESS_THRESHOLD time.Duration = 2592000 * time.Second // 30 days
 )
 
@@ -129,10 +132,14 @@ func crawl(seed_url url, queue *queueOfPages, crawler_id uint, iterator *uint, w
 			continue
 		}
 
-		// save page title
-		page.Title = getPageTitle(doc)
+		// var bodyNode *html.Node
+		page.Title, page.Description, _ = parsePageMetadata(doc)
 
-		// save page body content
+		// page.Body = parsePageBody(bodyNode)
+		// if err != nil {
+		// 	log.Printf("[%s] parse body content failed: %v", currentUrl, err)
+		// 	continue
+		// }
 
 		hyperlinks := findHyperlinks(doc, currentUrl)
 		queue.enqueue(hyperlinks)
@@ -143,6 +150,8 @@ func crawl(seed_url url, queue *queueOfPages, crawler_id uint, iterator *uint, w
 		log.Println("iter:  ", *iterator)
 		log.Println("url:   ", currentUrl)
 		log.Println("title: ", page.Title)
+		log.Println("description: ", page.Description)
+		log.Println("body:  ", "")
 		log.Println("queue: ", len(queue.links), "links long")
 
 		time.Sleep(CRAWLER_POLITENESS_SLEEP_TIME)
@@ -150,36 +159,120 @@ func crawl(seed_url url, queue *queueOfPages, crawler_id uint, iterator *uint, w
 
 }
 
-func getPageTitle(root_node *html.Node) string {
+func parsePageMetadata(root_node *html.Node) (string, string, *html.Node) {
+	var (
+		pageTitle       string
+		pageDescription string
+
+		bodyNode *html.Node
+	)
+
 	for node := range root_node.Descendants() {
 		var (
 			isTitle bool = node.DataAtom == atom.Title
 			isH1    bool = node.DataAtom == atom.H1
 			isH2    bool = node.DataAtom == atom.H2
 			isH3    bool = node.DataAtom == atom.H3
+
+			// isDescription bool = false
+
+			// isBody bool = node.DataAtom == atom.Body
 		)
 
-		if isTitle {
-			return node.FirstChild.Data
+		// No point in continuing to iterate over the loop
+		// if everything has already been found
+		if pageTitle != "" && pageDescription != "" && bodyNode != nil {
+			break
 		}
 
-		// If no <title> found, use <h1> as fallback
-		if isH1 {
-			return node.FirstChild.Data
+		if isTitle && pageTitle == "" {
+			pageTitle = strings.TrimSpace(node.FirstChild.Data)
+		} else if isH1 && pageTitle == "" { // If no <title> found, use <h1> as fallback
+			pageTitle = strings.TrimSpace(node.FirstChild.Data)
+		} else if isH2 && pageTitle == "" { // If no <h1> found, use <h2> as fallback
+			pageTitle = strings.TrimSpace(node.FirstChild.Data)
+		} else if isH3 && pageTitle == "" { // If no <h2> found, use <h3> as fallback
+			pageTitle = strings.TrimSpace(node.FirstChild.Data)
 		}
 
-		// If no <h1> found, use <h2> as fallback
-		if isH2 {
-			return node.FirstChild.Data
-		}
+		// Get page description
+		if node.DataAtom == atom.Meta {
+			var (
+				isMetaDescription bool = false
+			)
 
-		// If no <h2> found, use <h3> as fallback
-		if isH3 {
-			return node.FirstChild.Data
+			for _, attribute := range node.Attr {
+				if strings.ToLower(attribute.Key) == "name" && strings.ToLower(attribute.Val) == "description" {
+					isMetaDescription = true
+				}
+
+				if !isMetaDescription {
+					continue
+				}
+
+				for _, attribute := range node.Attr {
+					if strings.ToLower(attribute.Key) == "content" {
+						pageDescription = strings.TrimSpace(attribute.Val)
+						break
+					}
+				}
+			}
+
+			// pageBody, err = helper.Concat(bodyFragments)
+			// if err != nil {
+			// 	return pageTitle, pageBody, fmt.Errorf("concatenate page body fragments failed: %w", err)
+			// }
 		}
 	}
+	return pageTitle, pageDescription, bodyNode
+}
 
-	return ""
+func parsePageBody(bodyNode *html.Node) string {
+	var (
+		isBody bool = bodyNode.DataAtom == atom.Body
+
+		sb strings.Builder
+	)
+
+	if !isBody {
+		return ""
+	}
+
+	for sub_node := range bodyNode.Descendants() {
+		// var (
+		// 	isBodyText = sub_node.DataAtom != atom.Script &&
+		// 		sub_node.DataAtom != atom.Canvas &&
+		// 		sub_node.DataAtom != atom.Svg &&
+		// 		sub_node.DataAtom != atom.Math &&
+		// 		sub_node.DataAtom != atom.Embed &&
+		// 		sub_node.DataAtom != atom.Iframe &&
+		// 		sub_node.DataAtom != atom.Object &&
+		// 		sub_node.DataAtom != atom.Picture &&
+		// 		sub_node.DataAtom != atom.Source &&
+
+		// 		sub_node.DataAtom != atom.Area &&
+		// 		sub_node.DataAtom != atom.Audio &&
+		// 		sub_node.DataAtom != atom.Img &&
+		// 		sub_node.DataAtom != atom.Map &&
+		// 		sub_node.DataAtom != atom.Track &&
+		// 		sub_node.DataAtom != atom.Video
+		// )
+
+		// if sub_node.FirstChild == nil {
+		// 	continue
+		// }
+
+		// if isBodyText {
+		_, _ = sb.WriteString(fmt.Sprintf("%s ", strings.TrimSpace(sub_node.FirstChild.Data)))
+		// }
+		// if err != nil {
+		// 	return sb.String(), fmt.Errorf("write to string builder failed: %w", err)
+		// }
+
+	}
+
+	return strings.TrimSpace(sb.String())
+
 }
 
 func findHyperlinks(root_node *html.Node, root_url url) []url {
