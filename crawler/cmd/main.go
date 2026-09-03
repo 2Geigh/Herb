@@ -174,7 +174,7 @@ func parsePageMetadata(root_node *html.Node) (string, string, *html.Node) {
 			isH2    bool = node.DataAtom == atom.H2
 			isH3    bool = node.DataAtom == atom.H3
 
-			// isDescription bool = false
+			isMeta bool = node.DataAtom == atom.Meta
 
 			// isBody bool = node.DataAtom == atom.Body
 		)
@@ -196,28 +196,28 @@ func parsePageMetadata(root_node *html.Node) (string, string, *html.Node) {
 		}
 
 		// Get page description
+		if !isMeta {
+			continue
+		}
+		var (
+			isMetaDescription bool
+		)
 		for _, attribute := range node.Attr {
-			var (
-				isMetaDescription bool = node.DataAtom == atom.Meta &&
-					strings.ToLower(attribute.Key) == "name" &&
-					strings.ToLower(attribute.Val) == "description"
-			)
+			isMetaDescription = strings.ToLower(attribute.Key) == "name" &&
+				strings.ToLower(attribute.Val) == "description"
 
 			if !isMetaDescription {
 				continue
 			}
 
 			for _, attribute := range node.Attr {
-				if strings.ToLower(attribute.Key) == "content" {
-					pageDescription = strings.TrimSpace(attribute.Val)
-					break
+				if strings.ToLower(attribute.Key) != "content" {
+					continue
 				}
-			}
 
-			// pageBody, err = helper.Concat(bodyFragments)
-			// if err != nil {
-			// 	return pageTitle, pageBody, fmt.Errorf("concatenate page body fragments failed: %w", err)
-			// }
+				pageDescription = strings.TrimSpace(attribute.Val)
+				break
+			}
 		}
 	}
 	return pageTitle, pageDescription, bodyNode
