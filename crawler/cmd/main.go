@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -200,26 +201,32 @@ func parsePageMetadata(root_node *html.Node) (string, string, *html.Node) {
 			continue
 		}
 		var (
-			isMetaDescription bool
+			isMetaDescription bool = slices.Contains(
+				node.Attr,
+				html.Attribute{
+					Key: "name",
+					Val: "description"},
+			)
 		)
-		for _, attribute := range node.Attr {
-			isMetaDescription = strings.ToLower(attribute.Key) == "name" &&
-				strings.ToLower(attribute.Val) == "description"
-
-			if !isMetaDescription {
-				continue
-			}
-
-			for _, attribute := range node.Attr {
-				if strings.ToLower(attribute.Key) != "content" {
-					continue
-				}
-
-				pageDescription = strings.TrimSpace(attribute.Val)
-				break
-			}
+		if !isMetaDescription {
+			continue
 		}
+		var (
+			contentIndex = slices.IndexFunc(
+				node.Attr,
+				func(attr html.Attribute) bool {
+					return attr.Key == "content"
+				},
+			)
+			hasContentKey bool = contentIndex != -1
+		)
+		if !hasContentKey {
+			continue
+		}
+		pageDescription = strings.TrimSpace(node.Attr[contentIndex].Val)
+		break
 	}
+
 	return pageTitle, pageDescription, bodyNode
 }
 
