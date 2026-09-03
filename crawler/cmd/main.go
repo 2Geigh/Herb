@@ -176,8 +176,6 @@ func parsePageMetadata(root_node *html.Node) (string, string, *html.Node) {
 			isH3    bool = node.DataAtom == atom.H3
 
 			isMeta bool = node.DataAtom == atom.Meta
-
-			// isBody bool = node.DataAtom == atom.Body
 		)
 
 		// No point in continuing to iterate over the loop
