@@ -39,7 +39,7 @@ type (
 )
 
 const (
-	CRAWLER_POLITENESS_SLEEP_TIME     time.Duration = 8 * time.Second
+	CRAWLER_POLITENESS_INTERVAL       time.Duration = 8 * time.Second
 	CRAWLER_MINIMUM_OLDNESS_THRESHOLD time.Duration = 2592000 * time.Second // 30 days
 )
 
@@ -89,7 +89,7 @@ func main() {
 
 		go crawl(seed_url, &pagesQueue, crwaler_id, &crawl_iterator, &wg)
 
-		time.Sleep(CRAWLER_POLITENESS_SLEEP_TIME / 2)
+		time.Sleep(CRAWLER_POLITENESS_INTERVAL / 2)
 	}
 
 	wg.Wait()
@@ -109,11 +109,13 @@ func crawl(seed_url url, queue *queueOfPages, crawler_id uint, iterator *uint, w
 
 		// IF THIS URL'S DOMAIN HAS BEEN HIT
 		// WITHIN THE LAST CRAWLER_POLITENESS_SLEEP_TIME (15 seconds):
-		time.Sleep(CRAWLER_POLITENESS_SLEEP_TIME)
 
 		// IF THIS URL HAS BEEN HIT
 		// WITHIN THE LAST CRAWLER_MINIMUM_OLDNESS_THRESHOLD (30 days):
 		// continue
+		if hasDomainBeenCrawledTooRecently(currentUrl, CRAWLER_POLITENESS_INTERVAL) {
+			time.Sleep(CRAWLER_POLITENESS_INTERVAL)
+		}
 
 		response, err := http.Get(string(currentUrl))
 		if err != nil {
@@ -152,6 +154,10 @@ func crawl(seed_url url, queue *queueOfPages, crawler_id uint, iterator *uint, w
 			continue
 		}
 
+		// TODO
+		//  page.Title = parsePageTitle(doc)
+		//  page.Description = parsePageDescription(doc)
+
 		page.Title, page.Description = parsePageMetadata(doc)
 
 		page.Text, err = parsePageBody(doc)
@@ -169,16 +175,28 @@ func crawl(seed_url url, queue *queueOfPages, crawler_id uint, iterator *uint, w
 		// log.Println("iter:          ", *iterator)
 		log.Println("url:           ", currentUrl)
 		log.Println("title:         ", page.Title)
-		// log.Println("desc:          ", page.Description)
+		log.Println("desc:          ", page.Description)
 		// log.Println("body:          ", len(page.Text), "bytes long")
 		log.Println("outneighbours: ", len(page.Outneighbours))
 		// log.Println("response_body: ", len(page.ResponseBody), "bytes long")
 		log.Println("queue:         ", len(queue.links), "links long")
 
-		time.Sleep(CRAWLER_POLITENESS_SLEEP_TIME)
 		*iterator += 1
 	}
 
+}
+
+func trimTrailingSlash(url url) url {
+	if string(url[len(url)-1]) != "/" {
+		return url
+	}
+
+	return url[0 : len(url)-1]
+
+}
+
+func hasDomainBeenCrawledTooRecently(link url, politeness_interval time.Duration) bool {
+	return true
 }
 
 func parsePageMetadata(root_node *html.Node) (string, string) {
@@ -203,6 +221,9 @@ func parsePageMetadata(root_node *html.Node) (string, string) {
 			break
 		}
 
+		if pageTitle == "" {
+
+		}
 		if isTitle && pageTitle == "" {
 			pageTitle = strings.TrimSpace(node.FirstChild.Data)
 		} else if isH1 && pageTitle == "" { // If no <title> found, use <h1> as fallback
@@ -393,7 +414,7 @@ func findHyperlinks(root_node *html.Node, root_url url) []url {
 			// log.Println("newfoundLink", newfoundLink)
 			// log.Println("isAlternativeUriScheme", isAlternativeUriScheme)
 			// log.Printf("[%s] Found: %v", root_url, newfoundLink)
-			hyperlinks = append(hyperlinks, newfoundLink)
+			hyperlinks = append(hyperlinks, trimTrailingSlash(newfoundLink))
 			break
 		}
 	}
