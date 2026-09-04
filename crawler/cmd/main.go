@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"slices"
@@ -19,11 +20,13 @@ type (
 	url    string
 
 	webpage struct {
+		ResponseBody string `json:"response_body"`
+
 		Domain             domain    `json:"domain"`
 		Url                url       `json:"url"`
-		Body               string    `json:"body"`
 		Title              string    `json:"title"`
 		Description        string    `json:"description"`
+		Text               string    `json:"text"`
 		Outneighbours      []url     `json:"outneighbours"`
 		Date_discovered    time.Time `json:"date_discovered"`
 		Date_last_accessed time.Time `json:"date_last_accessed"`
@@ -127,7 +130,23 @@ func crawl(seed_url url, queue *queueOfPages, crawler_id uint, iterator *uint, w
 			continue
 		}
 
-		doc, err := html.Parse(response.Body)
+		body := struct {
+			asReadCloser io.ReadCloser
+			asBytes      []byte
+		}{
+			asReadCloser: response.Body,
+		}
+
+		body.asBytes, err = io.ReadAll(response.Body)
+		if err != nil {
+			log.Printf("[%s] read response body failed: %v", currentUrl, err)
+			continue
+		}
+		page.ResponseBody = string(body.asBytes)
+
+		doc, err := html.Parse(
+			strings.NewReader(string(body.asBytes)),
+		)
 		if err != nil {
 			log.Printf("[%s] parse HTML failed: %v", currentUrl, err)
 			continue
@@ -135,26 +154,29 @@ func crawl(seed_url url, queue *queueOfPages, crawler_id uint, iterator *uint, w
 
 		page.Title, page.Description = parsePageMetadata(doc)
 
-		page.Body, err = parsePageBody(doc)
+		page.Text, err = parsePageBody(doc)
 		if err != nil {
 			log.Printf("[%s] parse body content failed: %v", currentUrl, err)
 			continue
 		}
 
 		hyperlinks := findHyperlinks(doc, currentUrl)
+		page.Outneighbours = hyperlinks
 		queue.enqueue(hyperlinks)
-		*iterator += 1
 
 		log.Println()
-		log.Println("id:    ", crawler_id)
-		log.Println("iter:  ", *iterator)
-		log.Println("url:   ", currentUrl)
-		log.Println("title: ", page.Title)
-		log.Println("desc:  ", page.Description)
-		log.Println("body:  ", page.Body)
-		log.Println("queue: ", len(queue.links), "links long")
+		log.Println("crawler:       ", crawler_id)
+		// log.Println("iter:          ", *iterator)
+		log.Println("url:           ", currentUrl)
+		log.Println("title:         ", page.Title)
+		// log.Println("desc:          ", page.Description)
+		// log.Println("body:          ", len(page.Text), "bytes long")
+		log.Println("outneighbours: ", len(page.Outneighbours))
+		// log.Println("response_body: ", len(page.ResponseBody), "bytes long")
+		log.Println("queue:         ", len(queue.links), "links long")
 
 		time.Sleep(CRAWLER_POLITENESS_SLEEP_TIME)
+		*iterator += 1
 	}
 
 }
@@ -286,13 +308,13 @@ func parsePageBody(root_node *html.Node) (string, error) {
 			continue
 		}
 
-		fmt.Println()
-		fmt.Println("               DATA", strings.TrimSpace(node.Data))
-		fmt.Println("           DATAATOM", node.DataAtom)
-		fmt.Println("           DATATYPE", node.Type)
-		fmt.Println("    FIRSTCHILD_DATA", strings.TrimSpace(node.FirstChild.Data))
-		fmt.Println("FIRSTCHILD_DATAATOM", node.FirstChild.DataAtom)
-		fmt.Println("FIRSTCHILD_DATATYPE", node.FirstChild.Type)
+		// fmt.Println()
+		// fmt.Println("               DATA", strings.TrimSpace(node.Data))
+		// fmt.Println("           DATAATOM", node.DataAtom)
+		// fmt.Println("           DATATYPE", node.Type)
+		// fmt.Println("    FIRSTCHILD_DATA", strings.TrimSpace(node.FirstChild.Data))
+		// fmt.Println("FIRSTCHILD_DATAATOM", node.FirstChild.DataAtom)
+		// fmt.Println("FIRSTCHILD_DATATYPE", node.FirstChild.Type)
 
 		_, err = sb.WriteString(fmt.Sprintf("%s ", strings.TrimSpace(node.FirstChild.Data)))
 		if err != nil {
