@@ -11,30 +11,28 @@ import (
 	"time"
 
 	"github.com/2Geigh/Herb/crawler/internal/database"
+	"github.com/2Geigh/Herb/crawler/internal/helper"
 	"golang.org/x/net/html"
 	"golang.org/x/net/html/atom"
 )
 
 type (
-	domain string
-	url    string
-
 	webpage struct {
 		ResponseBody string `json:"response_body"`
 
-		Domain             domain    `json:"domain"`
-		Url                url       `json:"url"`
-		Title              string    `json:"title"`
-		Description        string    `json:"description"`
-		Text               string    `json:"text"`
-		Outneighbours      []url     `json:"outneighbours"`
-		Date_discovered    time.Time `json:"date_discovered"`
-		Date_last_accessed time.Time `json:"date_last_accessed"`
+		Domain            helper.SecondAndTopLevelDomain `json:"domain"`
+		Url               helper.Url                     `json:"helper.Url"`
+		Title             string                         `json:"title"`
+		Description       string                         `json:"description"`
+		Text              string                         `json:"text"`
+		Outneighbours     []helper.Url                   `json:"outneighbours"`
+		Date_discovered   time.Time                      `json:"date_discovered"`
+		Date_last_crawled time.Time                      `json:"date_last_crawled"`
 	}
 
 	queueOfPages struct {
 		mu    sync.Mutex
-		links []url
+		links []helper.Url
 	}
 )
 
@@ -44,17 +42,17 @@ const (
 )
 
 var (
-	seed_urls = []url{
+	seed_urls = []helper.Url{
 		"https://nicholasgarcia.com",
 		"https://angeldolly.com/",
 		"https://nyscyra.net/",
 		"https://0xffff.one",
 		"https://v2ex.com",
 	}
-	pagesQueue = queueOfPages{links: []url{}, mu: sync.Mutex{}}
+	pagesQueue = queueOfPages{links: []helper.Url{}, mu: sync.Mutex{}}
 )
 
-func (q *queueOfPages) dequeue() url {
+func (q *queueOfPages) dequeue() helper.Url {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
@@ -63,7 +61,7 @@ func (q *queueOfPages) dequeue() url {
 	return dequeued
 }
 
-func (q *queueOfPages) enqueue(urls []url) {
+func (q *queueOfPages) enqueue(urls []helper.Url) {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
@@ -95,10 +93,10 @@ func main() {
 	wg.Wait()
 }
 
-func crawl(seed_url url, queue *queueOfPages, crawler_id uint, iterator *uint, wg *sync.WaitGroup) {
+func crawl(seed_url helper.Url, queue *queueOfPages, crawler_id uint, iterator *uint, wg *sync.WaitGroup) {
 	defer wg.Done()
 
-	queue.enqueue([]url{seed_url})
+	queue.enqueue([]helper.Url{seed_url})
 
 	for len(queue.links) > 0 {
 		var (
@@ -186,16 +184,17 @@ func crawl(seed_url url, queue *queueOfPages, crawler_id uint, iterator *uint, w
 
 }
 
-func trimTrailingSlash(url url) url {
-	if string(url[len(url)-1]) != "/" {
-		return url
-	}
+func hasDomainBeenCrawledTooRecently(link helper.Url, politeness_interval time.Duration) bool {
+	// _, err := database.DB.Exec(
+	// 	`SELECT last_crawled_date FROM pages WHERE `,
+	// 	link.TrimTrailingSlash().GetSecondAndTopLevelDomain(),
+	// )
+	// if err == sql.ErrNoRows {
 
-	return url[0 : len(url)-1]
+	// } else if err != nil {
 
-}
+	// }
 
-func hasDomainBeenCrawledTooRecently(link url, politeness_interval time.Duration) bool {
 	return true
 }
 
@@ -348,9 +347,9 @@ func parsePageBody(root_node *html.Node) (string, error) {
 
 // return strings.TrimSpace(sb.String()), err
 
-func findHyperlinks(root_node *html.Node, root_url url) []url {
+func findHyperlinks(root_node *html.Node, root_url helper.Url) []helper.Url {
 	var (
-		hyperlinks []url
+		hyperlinks []helper.Url
 	)
 
 	for node := range root_node.Descendants() {
@@ -368,9 +367,9 @@ func findHyperlinks(root_node *html.Node, root_url url) []url {
 			}
 
 			var (
-				trimmedRootUrl url    = root_url
-				anchorHref     string = attribute.Val
-				newfoundLink   url
+				trimmedRootUrl helper.Url = root_url
+				anchorHref     string     = attribute.Val
+				newfoundLink   helper.Url
 			)
 
 			if len(anchorHref) < 2 {
@@ -382,12 +381,12 @@ func findHyperlinks(root_node *html.Node, root_url url) []url {
 			}
 
 			if string(anchorHref[0]) == "/" { // ex: <a href="/about">
-				newfoundLink = url(string(trimmedRootUrl) + anchorHref)
+				newfoundLink = helper.Url(string(trimmedRootUrl) + anchorHref)
 			} else if len(anchorHref) >= len("http") &&
 				string(anchorHref[0:len("http")]) != "http" { // ex: <a href="intro.html">
-				newfoundLink = url(fmt.Sprintf("%s/%s", trimmedRootUrl, anchorHref))
+				newfoundLink = helper.Url(fmt.Sprintf("%s/%s", trimmedRootUrl, anchorHref))
 			} else {
-				newfoundLink = url(anchorHref)
+				newfoundLink = helper.Url(anchorHref)
 			}
 
 			if len(newfoundLink) < len("http://") {
@@ -414,7 +413,7 @@ func findHyperlinks(root_node *html.Node, root_url url) []url {
 			// log.Println("newfoundLink", newfoundLink)
 			// log.Println("isAlternativeUriScheme", isAlternativeUriScheme)
 			// log.Printf("[%s] Found: %v", root_url, newfoundLink)
-			hyperlinks = append(hyperlinks, trimTrailingSlash(newfoundLink))
+			hyperlinks = append(hyperlinks, newfoundLink.TrimTrailingSlash())
 			break
 		}
 	}
