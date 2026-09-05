@@ -21,14 +21,14 @@ func (url Url) GetSecondAndTopLevelDomain() SecondAndTopLevelDomain {
 	// [0] == http:// || https://
 	// [1] == www.example.com/thingy
 
-	protocol := linkComponents[0] + "://"
+	// protocol := linkComponents[0] + "://"
 	domainWithoutRoutes := strings.Split(linkComponents[1], "/")[0]
 
 	domainLevels := strings.Split(domainWithoutRoutes, ".")
-	topLevel := domainLevels[len(domainLevels)]
-	secondLevel := domainLevels[len(domainLevels)-1]
+	topLevel := domainLevels[len(domainLevels)-1]
+	secondLevel := domainLevels[len(domainLevels)-2]
 
-	return SecondAndTopLevelDomain(protocol + secondLevel + topLevel)
+	return SecondAndTopLevelDomain(secondLevel + "." + topLevel)
 }
 
 func (url Url) TrimTrailingSlash() Url {
