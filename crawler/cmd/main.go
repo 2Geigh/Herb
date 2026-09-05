@@ -152,11 +152,8 @@ func crawl(seed_url helper.Url, queue *queueOfPages, crawler_id uint, iterator *
 			continue
 		}
 
-		// TODO
-		//  page.Title = parsePageTitle(doc)
-		//  page.Description = parsePageDescription(doc)
-
-		page.Title, page.Description = parsePageMetadata(doc)
+		page.Title = parsePageTitle(doc)
+		page.Description = parsePageDescription(doc)
 
 		page.Text, err = parsePageBody(doc)
 		if err != nil {
@@ -198,10 +195,9 @@ func hasDomainBeenCrawledTooRecently(link helper.Url, politeness_interval time.D
 	return true
 }
 
-func parsePageMetadata(root_node *html.Node) (string, string) {
+func parsePageTitle(root_node *html.Node) string {
 	var (
-		pageTitle       string
-		pageDescription string
+		pageTitle string
 	)
 
 	for node := range root_node.Descendants() {
@@ -210,15 +206,7 @@ func parsePageMetadata(root_node *html.Node) (string, string) {
 			isH1    bool = node.DataAtom == atom.H1
 			isH2    bool = node.DataAtom == atom.H2
 			isH3    bool = node.DataAtom == atom.H3
-
-			isMeta bool = node.DataAtom == atom.Meta
 		)
-
-		// No point in continuing to iterate over the loop
-		// if everything has already been found
-		if pageTitle != "" && pageDescription != "" {
-			break
-		}
 
 		if isTitle && pageTitle == "" {
 			if node.FirstChild != nil {
@@ -247,10 +235,24 @@ func parsePageMetadata(root_node *html.Node) (string, string) {
 			}
 		}
 
-		// Get page description
+	}
+
+	return pageTitle
+}
+
+func parsePageDescription(root_node *html.Node) string {
+	var (
+		pageDescription string
+	)
+
+	for node := range root_node.Descendants() {
+		var (
+			isMeta bool = node.DataAtom == atom.Meta
+		)
 		if !isMeta {
 			continue
 		}
+
 		var (
 			isMetaDescription bool = slices.Contains(
 				node.Attr,
@@ -262,6 +264,7 @@ func parsePageMetadata(root_node *html.Node) (string, string) {
 		if !isMetaDescription {
 			continue
 		}
+
 		var (
 			contentIndex = slices.IndexFunc(
 				node.Attr,
@@ -274,11 +277,12 @@ func parsePageMetadata(root_node *html.Node) (string, string) {
 		if !hasContentKey {
 			continue
 		}
+
 		pageDescription = strings.TrimSpace(node.Attr[contentIndex].Val)
 		break
 	}
 
-	return pageTitle, pageDescription
+	return pageDescription
 }
 
 func parsePageBody(root_node *html.Node) (string, error) {
