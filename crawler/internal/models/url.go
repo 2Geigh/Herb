@@ -2,6 +2,7 @@ package models
 
 import (
 	"strings"
+	"time"
 )
 
 type (
@@ -38,4 +39,18 @@ func (url Url) TrimTrailingSlash() Url {
 	}
 
 	return url[0 : len(url)-1]
+}
+
+func (d SecondAndTopLevelDomain) HasBeenCrawledTooRecently(politeness_interval time.Duration) bool {
+	// _, err := database.DB.Exec(
+	// 	`SELECT last_crawled_date FROM pages WHERE `,
+	// 	link.TrimTrailingSlash().GetSecondAndTopLevelDomain(),
+	// )
+	// if err == sql.ErrNoRows {
+
+	// } else if err != nil {
+
+	// }
+
+	return true
 }

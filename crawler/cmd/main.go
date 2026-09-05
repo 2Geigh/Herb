@@ -79,7 +79,8 @@ func crawl(seed_url models.Url, queue *models.QueueOfPages, crawler_id uint, ite
 		// IF THIS URL HAS BEEN HIT
 		// WITHIN THE LAST CRAWLER_MINIMUM_OLDNESS_THRESHOLD (30 days):
 		// continue
-		if hasDomainBeenCrawledTooRecently(currentUrl, CRAWLER_POLITENESS_INTERVAL) {
+		page.Domain = currentUrl.TrimTrailingSlash().GetSecondAndTopLevelDomain()
+		if page.Domain.HasBeenCrawledTooRecently(CRAWLER_POLITENESS_INTERVAL) {
 			time.Sleep(CRAWLER_POLITENESS_INTERVAL)
 		}
 
@@ -135,7 +136,6 @@ func crawl(seed_url models.Url, queue *models.QueueOfPages, crawler_id uint, ite
 		queue.Enqueue(hyperlinks)
 
 		page.Outneighbours = hyperlinks
-		page.Domain = currentUrl.TrimTrailingSlash().GetSecondAndTopLevelDomain()
 		page.Title = parsePageTitle(doc)
 		page.Description = parsePageDescription(doc)
 
@@ -160,20 +160,6 @@ func crawl(seed_url models.Url, queue *models.QueueOfPages, crawler_id uint, ite
 		*iterator += 1
 	}
 
-}
-
-func hasDomainBeenCrawledTooRecently(link models.Url, politeness_interval time.Duration) bool {
-	// _, err := database.DB.Exec(
-	// 	`SELECT last_crawled_date FROM pages WHERE `,
-	// 	link.TrimTrailingSlash().GetSecondAndTopLevelDomain(),
-	// )
-	// if err == sql.ErrNoRows {
-
-	// } else if err != nil {
-
-	// }
-
-	return true
 }
 
 func parsePageTitle(root_node *html.Node) string {
