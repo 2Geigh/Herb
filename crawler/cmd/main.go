@@ -208,33 +208,45 @@ func parsePageTitle(root_node *html.Node) string {
 			isH3    bool = node.DataAtom == atom.H3
 		)
 
-		if isTitle && pageTitle == "" {
+		if isTitle {
 			if node.FirstChild != nil {
 				pageTitle = strings.TrimSpace(node.FirstChild.Data)
-			} else {
-				pageTitle = strings.TrimSpace(node.Data)
+				break
 			}
-		} else if isH1 && pageTitle == "" { // If no <title> found, use <h1> as fallback
-			if node.FirstChild != nil {
-				pageTitle = strings.TrimSpace(node.FirstChild.Data)
-			} else {
-				pageTitle = strings.TrimSpace(node.Data)
-			}
-		} else if isH2 && pageTitle == "" { // If no <h1> found, use <h2> as fallback
-			if node.FirstChild != nil {
-				pageTitle = strings.TrimSpace(node.FirstChild.Data)
-			} else {
-				pageTitle = strings.TrimSpace(node.Data)
-			}
-		} else if isH3 && pageTitle == "" { // If no <h2> found, use <h3> as fallback
-			if node.FirstChild != nil {
-				pageTitle = strings.TrimSpace(node.FirstChild.Data)
-			} else {
-				pageTitle = strings.TrimSpace(node.Data)
 
-			}
+			pageTitle = strings.TrimSpace(node.Data)
+			break
 		}
 
+		if isH1 { // If no <title> found, use <h1> as fallback
+			if node.FirstChild != nil {
+				pageTitle = strings.TrimSpace(node.FirstChild.Data)
+				break
+			}
+
+			pageTitle = strings.TrimSpace(node.Data)
+			break
+		}
+
+		if isH2 { // If no <h1> found, use <h2> as fallback
+			if node.FirstChild != nil {
+				pageTitle = strings.TrimSpace(node.FirstChild.Data)
+				break
+			}
+
+			pageTitle = strings.TrimSpace(node.Data)
+			break
+		}
+
+		if isH3 { // If no <h2> found, use <h3> as fallback
+			if node.FirstChild != nil {
+				pageTitle = strings.TrimSpace(node.FirstChild.Data)
+				break
+			}
+
+			pageTitle = strings.TrimSpace(node.Data)
+			break
+		}
 	}
 
 	return pageTitle
