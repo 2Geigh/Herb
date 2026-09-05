@@ -22,9 +22,10 @@ func (url Url) GetSecondAndTopLevelDomain() SecondAndTopLevelDomain {
 	// [1] == www.example.com/thingy
 
 	// protocol := linkComponents[0] + "://"
-	domainWithoutRoutes := strings.Split(linkComponents[1], "/")[0]
+	domainWithoutRoutes, _, _ := strings.Cut(linkComponents[1], "/")
 
 	domainLevels := strings.Split(domainWithoutRoutes, ".")
+
 	topLevel := domainLevels[len(domainLevels)-1]
 	secondLevel := domainLevels[len(domainLevels)-2]
 
