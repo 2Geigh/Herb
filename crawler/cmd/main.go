@@ -1,8 +1,6 @@
 package main
 
 import (
-	"database/sql/driver"
-	"encoding/json"
 	"fmt"
 	"io"
 	"log"
@@ -14,59 +12,10 @@ import (
 	"unicode/utf8"
 
 	"github.com/2Geigh/Herb/crawler/internal/database"
-	"github.com/2Geigh/Herb/crawler/internal/helper"
+	"github.com/2Geigh/Herb/crawler/internal/models"
 	"golang.org/x/net/html"
 	"golang.org/x/net/html/atom"
 )
-
-type (
-	webpage struct {
-		ResponseBody string `json:"response_body"`
-
-		Domain            helper.SecondAndTopLevelDomain `json:"domain"`
-		Url               helper.Url                     `json:"helper.Url"`
-		Title             string                         `json:"title"`
-		Description       string                         `json:"description"`
-		Text              string                         `json:"text"`
-		Outneighbours     []helper.Url                   `json:"outneighbours"`
-		Date_discovered   time.Time                      `json:"date_discovered"`
-		Date_last_crawled time.Time                      `json:"date_last_crawled"`
-	}
-
-	queueOfPages struct {
-		mu    sync.Mutex
-		links []helper.Url
-	}
-)
-
-func (p webpage) Value() (driver.Value, error) {
-	return json.Marshal(p)
-}
-
-func (p webpage) Scan(value any) error {
-	b, ok := value.([]byte)
-	if !ok {
-		return fmt.Errorf("type assertion to []byte failed")
-	}
-
-	return json.Unmarshal(b, &p)
-}
-
-func (q *queueOfPages) dequeue() helper.Url {
-	q.mu.Lock()
-	defer q.mu.Unlock()
-
-	dequeued := q.links[0]
-	q.links = q.links[1:]
-	return dequeued
-}
-
-func (q *queueOfPages) enqueue(urls []helper.Url) {
-	q.mu.Lock()
-	defer q.mu.Unlock()
-
-	q.links = append(q.links, urls...)
-}
 
 const (
 	CRAWLER_POLITENESS_INTERVAL       time.Duration = 8 * time.Second
@@ -74,14 +23,14 @@ const (
 )
 
 var (
-	seed_urls = []helper.Url{
+	seed_urls = []models.Url{
 		"https://nicholasgarcia.com",
 		"https://angeldolly.com/",
 		"https://nyscyra.net/",
 		"https://0xffff.one",
 		"https://v2ex.com",
 	}
-	pagesQueue = queueOfPages{links: []helper.Url{}, mu: sync.Mutex{}}
+	pagesQueue = models.QueueOfPages{Links: []models.Url{}, Mu: sync.Mutex{}}
 )
 
 func main() {
@@ -109,20 +58,20 @@ func main() {
 	wg.Wait()
 }
 
-func crawl(seed_url helper.Url, queue *queueOfPages, crawler_id uint, iterator *uint, wg *sync.WaitGroup) {
+func crawl(seed_url models.Url, queue *models.QueueOfPages, crawler_id uint, iterator *uint, wg *sync.WaitGroup) {
 	defer wg.Done()
 
 	// TODO
 	// defer func() { recover() }()
 
-	queue.enqueue([]helper.Url{seed_url})
+	queue.Enqueue([]models.Url{seed_url})
 
-	for len(queue.links) > 0 {
+	for len(queue.Links) > 0 {
 		var (
-			page webpage
+			page models.Webpage
 		)
 
-		currentUrl := queue.dequeue()
+		currentUrl := queue.Dequeue()
 
 		// IF THIS URL'S DOMAIN HAS BEEN HIT
 		// WITHIN THE LAST CRAWLER_POLITENESS_SLEEP_TIME (15 seconds):
@@ -183,14 +132,14 @@ func crawl(seed_url helper.Url, queue *queueOfPages, crawler_id uint, iterator *
 		}
 
 		hyperlinks := findHyperlinks(doc, currentUrl)
-		queue.enqueue(hyperlinks)
+		queue.Enqueue(hyperlinks)
 
 		page.Outneighbours = hyperlinks
 		page.Domain = currentUrl.TrimTrailingSlash().GetSecondAndTopLevelDomain()
 		page.Title = parsePageTitle(doc)
 		page.Description = parsePageDescription(doc)
 
-		err = saveToDB(page)
+		err = page.Save(database.DB)
 		if err != nil {
 			log.Printf("[%s] save to database failed: %v", currentUrl, err)
 			continue
@@ -206,14 +155,14 @@ func crawl(seed_url helper.Url, queue *queueOfPages, crawler_id uint, iterator *
 		// log.Println("body:          ", len(page.Text), "bytes long")
 		// log.Println("outneighbours: ", len(page.Outneighbours))
 		// log.Println("response_body: ", len(page.ResponseBody), "bytes long")
-		log.Println("queue: ", len(queue.links), "links long")
+		log.Println("queue: ", len(queue.Links), "links long")
 
 		*iterator += 1
 	}
 
 }
 
-func hasDomainBeenCrawledTooRecently(link helper.Url, politeness_interval time.Duration) bool {
+func hasDomainBeenCrawledTooRecently(link models.Url, politeness_interval time.Duration) bool {
 	// _, err := database.DB.Exec(
 	// 	`SELECT last_crawled_date FROM pages WHERE `,
 	// 	link.TrimTrailingSlash().GetSecondAndTopLevelDomain(),
@@ -407,9 +356,9 @@ func parsePageBody(root_node *html.Node) (string, error) {
 	return strings.TrimSpace(sb.String()), err
 }
 
-func findHyperlinks(root_node *html.Node, root_url helper.Url) []helper.Url {
+func findHyperlinks(root_node *html.Node, root_url models.Url) []models.Url {
 	var (
-		hyperlinks []helper.Url
+		hyperlinks []models.Url
 	)
 
 	for node := range root_node.Descendants() {
@@ -427,9 +376,9 @@ func findHyperlinks(root_node *html.Node, root_url helper.Url) []helper.Url {
 			}
 
 			var (
-				trimmedRootUrl helper.Url = root_url
+				trimmedRootUrl models.Url = root_url
 				anchorHref     string     = attribute.Val
-				newfoundLink   helper.Url
+				newfoundLink   models.Url
 			)
 
 			if len(anchorHref) < 2 {
@@ -441,12 +390,12 @@ func findHyperlinks(root_node *html.Node, root_url helper.Url) []helper.Url {
 			}
 
 			if string(anchorHref[0]) == "/" { // ex: <a href="/about">
-				newfoundLink = helper.Url(string(trimmedRootUrl) + anchorHref)
+				newfoundLink = models.Url(string(trimmedRootUrl) + anchorHref)
 			} else if len(anchorHref) >= len("http") &&
 				string(anchorHref[0:len("http")]) != "http" { // ex: <a href="intro.html">
-				newfoundLink = helper.Url(fmt.Sprintf("%s/%s", trimmedRootUrl, anchorHref))
+				newfoundLink = models.Url(fmt.Sprintf("%s/%s", trimmedRootUrl, anchorHref))
 			} else {
-				newfoundLink = helper.Url(anchorHref)
+				newfoundLink = models.Url(anchorHref)
 			}
 
 			if len(newfoundLink) < len("http://") {
@@ -479,165 +428,4 @@ func findHyperlinks(root_node *html.Node, root_url helper.Url) []helper.Url {
 	}
 
 	return hyperlinks
-}
-
-func saveToDB(page webpage) error {
-	var (
-		isNewlyDiscoveredSite bool
-		isNewlyDiscoveredPage bool
-
-		siteId int
-		pageId int
-	)
-
-	tx, err := database.DB.Begin()
-	if err != nil {
-		return fmt.Errorf("start transaction failed: %w", err)
-	}
-	defer func() {
-		if err != nil {
-			_ = tx.Rollback()
-			return
-		}
-	}()
-
-	// Verify if site is already recorded in database
-	stmt, err := tx.Prepare(`SELECT id FROM sites WHERE second_and_top_level_domain = $1;`)
-	if err != nil {
-		return fmt.Errorf("prepare 'site' SELECT statement failed: %w", err)
-	}
-	defer stmt.Close()
-	rows, err := stmt.Query(page.Domain)
-	if err != nil {
-		return fmt.Errorf("execute 'site' SELECT statement failed: %w", err)
-	}
-	defer rows.Close()
-	for rows.Next() {
-		err = rows.Scan(siteId)
-		if err != nil {
-			return fmt.Errorf("scan returned SELECT site id failed: %w", err)
-		}
-		isNewlyDiscoveredSite = true
-	}
-
-	if isNewlyDiscoveredSite {
-		stmt, err = tx.Prepare(`INSERT INTO Sites (second_and_top_level_domain) VALUES ($1);`)
-		if err != nil {
-			return fmt.Errorf("prepare 'site' INSERT statement failed: %w", err)
-		}
-		defer stmt.Close()
-
-		result, err := stmt.Exec(page.Domain)
-		if err != nil {
-			return fmt.Errorf("execute 'site' INSERT transaction failed: %w", err)
-		}
-
-		var lastInsertId int64
-		lastInsertId, err = result.LastInsertId()
-		if err != nil {
-			return fmt.Errorf("parse returned INSERT site id failed: %w", err)
-		}
-		siteId = int(lastInsertId)
-	} else {
-		stmt, err = tx.Prepare(`UPDATE sites
-			SET
-				date_last_crawled = $1
-			
-			WHERE id = $2;`)
-		if err != nil {
-			return fmt.Errorf("prepare 'sites' UDPATE statement failed: %w", err)
-		}
-		defer stmt.Close()
-
-		_, err := stmt.Exec(
-			time.Now(),
-			siteId,
-		)
-		if err != nil {
-			return fmt.Errorf("execute 'sites' UDPATE transaction failed: %w", err)
-		}
-	}
-
-	// Verify if page is already recorded in database
-	stmt, err = tx.Prepare(`SELECT id FROM pages WHERE link = $1;`)
-	if err != nil {
-		return fmt.Errorf("prepare 'page' SELECT statement failed: %w", err)
-	}
-	defer stmt.Close()
-	rows, err = stmt.Query(page.Url)
-	if err != nil {
-		return fmt.Errorf("execute 'page' SELECT statement failed: %w", err)
-	}
-	defer rows.Close()
-	for rows.Next() {
-		err = rows.Scan(siteId)
-		if err != nil {
-			return fmt.Errorf("scan returned SELECT page id failed: %w", err)
-		}
-		isNewlyDiscoveredPage = true
-	}
-
-	if isNewlyDiscoveredPage {
-		stmt, err = tx.Prepare(`INSERT INTO pages (
-				title, 
-				description,
-				body_text,
-				response_body,
-			) 
-			VALUES ($1, $2, $3, $4);`)
-		if err != nil {
-			return fmt.Errorf("prepare 'pages' INSERT statement failed: %w", err)
-		}
-		defer stmt.Close()
-
-		result, err := stmt.Exec(
-			page.Title,
-			page.Description,
-			page.Text,
-			page.ResponseBody,
-		)
-		if err != nil {
-			return fmt.Errorf("execute 'pages' INSERT transaction failed: %w", err)
-		}
-
-		var lastInsertId int64
-		lastInsertId, err = result.LastInsertId()
-		if err != nil {
-			return fmt.Errorf("parse returned INSERT page id failed: %w", err)
-		}
-		pageId = int(lastInsertId)
-	} else {
-		stmt, err = tx.Prepare(`UPDATE pages
-			SET
-				title = $1,
-				description = $2,
-				body_text = $3,
-				response_body = $4,
-				date_last_crawled = $5
-			
-			WHERE id = $6;`)
-		if err != nil {
-			return fmt.Errorf("prepare 'pages' UDPATE statement failed: %w", err)
-		}
-		defer stmt.Close()
-
-		_, err := stmt.Exec(
-			page.Title,
-			page.Description,
-			page.Text,
-			page.ResponseBody,
-			time.Now(),
-			pageId,
-		)
-		if err != nil {
-			return fmt.Errorf("execute 'pages' UDPATE transaction failed: %w", err)
-		}
-	}
-
-	err = tx.Commit()
-	if err != nil {
-		return fmt.Errorf("commit transaction failed: %w", err)
-	}
-
-	return err
 }
