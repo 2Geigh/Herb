@@ -220,17 +220,31 @@ func parsePageMetadata(root_node *html.Node) (string, string) {
 			break
 		}
 
-		if pageTitle == "" {
-
-		}
 		if isTitle && pageTitle == "" {
-			pageTitle = strings.TrimSpace(node.FirstChild.Data)
+			if node.FirstChild != nil {
+				pageTitle = strings.TrimSpace(node.FirstChild.Data)
+			} else {
+				pageTitle = strings.TrimSpace(node.Data)
+			}
 		} else if isH1 && pageTitle == "" { // If no <title> found, use <h1> as fallback
-			pageTitle = strings.TrimSpace(node.FirstChild.Data)
+			if node.FirstChild != nil {
+				pageTitle = strings.TrimSpace(node.FirstChild.Data)
+			} else {
+				pageTitle = strings.TrimSpace(node.Data)
+			}
 		} else if isH2 && pageTitle == "" { // If no <h1> found, use <h2> as fallback
-			pageTitle = strings.TrimSpace(node.FirstChild.Data)
+			if node.FirstChild != nil {
+				pageTitle = strings.TrimSpace(node.FirstChild.Data)
+			} else {
+				pageTitle = strings.TrimSpace(node.Data)
+			}
 		} else if isH3 && pageTitle == "" { // If no <h2> found, use <h3> as fallback
-			pageTitle = strings.TrimSpace(node.FirstChild.Data)
+			if node.FirstChild != nil {
+				pageTitle = strings.TrimSpace(node.FirstChild.Data)
+			} else {
+				pageTitle = strings.TrimSpace(node.Data)
+
+			}
 		}
 
 		// Get page description
