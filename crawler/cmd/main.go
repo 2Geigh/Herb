@@ -345,8 +345,6 @@ func parsePageBody(root_node *html.Node) (string, error) {
 	return strings.TrimSpace(sb.String()), err
 }
 
-// return strings.TrimSpace(sb.String()), err
-
 func findHyperlinks(root_node *html.Node, root_url helper.Url) []helper.Url {
 	var (
 		hyperlinks []helper.Url
