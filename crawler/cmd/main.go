@@ -1,6 +1,8 @@
 package main
 
 import (
+	"database/sql/driver"
+	"encoding/json"
 	"fmt"
 	"io"
 	"log"
@@ -9,6 +11,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unicode/utf8"
 
 	"github.com/2Geigh/Herb/crawler/internal/database"
 	"github.com/2Geigh/Herb/crawler/internal/helper"
@@ -143,6 +146,11 @@ func crawl(seed_url helper.Url, queue *queueOfPages, crawler_id uint, iterator *
 			continue
 		}
 		page.ResponseBody = string(body.asBytes)
+
+		if !utf8.Valid(body.asBytes) {
+			log.Printf("[%s] invalid UTF-8", currentUrl)
+			continue
+		}
 
 		doc, err := html.Parse(
 			strings.NewReader(string(body.asBytes)),
