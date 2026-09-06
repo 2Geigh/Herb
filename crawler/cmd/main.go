@@ -60,6 +60,17 @@ func main() {
 		time.Sleep(CRAWLER_POLITENESS_INTERVAL / 2)
 	}
 
+	go func() {
+		for {
+			if crawl_iterator < uint(len(seed_urls)) {
+				continue
+			}
+
+			pagesQueue.Cleanup(database.DB)
+			crawl_iterator = 1
+		}
+	}()
+
 	wg.Wait()
 }
 

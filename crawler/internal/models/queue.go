@@ -3,6 +3,7 @@ package models
 import (
 	"database/sql"
 	"fmt"
+	"log"
 	"sync"
 )
 
@@ -12,6 +13,29 @@ type (
 		Links []Url
 	}
 )
+
+func (q *QueueOfPages) Cleanup(db *sql.DB) error {
+
+	q.Mu.Lock()
+	defer q.Mu.Unlock()
+
+	result, err := db.Exec(
+		`DELETE FROM link_queue a
+		USING link_queue b
+		WHERE a.hyperlink = b.hyperlink;`,
+	)
+	if err != nil {
+		return fmt.Errorf("execute statement failed: %w", err)
+	}
+
+	duplicatesDeleted, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("get result.RowsAffected() failed: %w", err)
+	}
+
+	log.Printf("removed %d duplicates from hyperlink queue", duplicatesDeleted)
+	return err
+}
 
 func (q *QueueOfPages) Dequeue(db *sql.DB) (Url, error) {
 	var (
