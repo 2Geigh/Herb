@@ -59,6 +59,16 @@ func InitializeDB() error {
 	return nil
 }
 
+func ReportDatabaseHealth() {
+	// for {
+	stats := DB.Stats()
+	log.Printf(`[DB STATS] InUse: %d | Idle: %d | Open: %d | WaitCount: %d`,
+		stats.InUse, stats.Idle, stats.OpenConnections, stats.WaitCount)
+
+	// time.Sleep(5 * time.Second)
+	// }
+}
+
 func migrate(db *sql.DB) error {
 
 	goose.SetBaseFS(embedMigrations)
@@ -74,14 +84,4 @@ func migrate(db *sql.DB) error {
 	}
 
 	return nil
-}
-
-func ReportDatabaseHealth() {
-	// for {
-	stats := DB.Stats()
-	log.Printf(`[DB STATS] InUse: %d | Idle: %d | Open: %d | WaitCount: %d`,
-		stats.InUse, stats.Idle, stats.OpenConnections, stats.WaitCount)
-
-	// time.Sleep(5 * time.Second)
-	// }
 }

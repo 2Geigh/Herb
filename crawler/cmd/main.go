@@ -175,106 +175,78 @@ func crawl(queue *models.QueueOfPages, iterator *uint, wg *sync.WaitGroup) {
 	}
 }
 
-func parsePageTitle(root_node *html.Node) string {
+func findHyperlinks(root_node *html.Node, root_url models.Url) []models.Url {
 	var (
-		pageTitle string
+		hyperlinks []models.Url
 	)
 
 	for node := range root_node.Descendants() {
-		var (
-			isTitle bool = node.DataAtom == atom.Title
-			isH1    bool = node.DataAtom == atom.H1
-			isH2    bool = node.DataAtom == atom.H2
-			isH3    bool = node.DataAtom == atom.H3
-		)
+		isAnchor :=
+			node.Type == html.ElementNode &&
+				node.DataAtom == atom.A
 
-		if isTitle {
-			if node.FirstChild != nil {
-				pageTitle = strings.TrimSpace(node.FirstChild.Data)
-				break
-			}
-
-			pageTitle = strings.TrimSpace(node.Data)
-			break
+		if !isAnchor {
+			continue
 		}
 
-		if isH1 { // If no <title> found, use <h1> as fallback
-			if node.FirstChild != nil {
-				pageTitle = strings.TrimSpace(node.FirstChild.Data)
-				break
+		for _, attribute := range node.Attr {
+			if attribute.Key != "href" {
+				continue
 			}
 
-			pageTitle = strings.TrimSpace(node.Data)
-			break
-		}
+			var (
+				trimmedRootUrl models.Url = root_url
+				anchorHref     string     = attribute.Val
+				newfoundLink   models.Url
+			)
 
-		if isH2 { // If no <h1> found, use <h2> as fallback
-			if node.FirstChild != nil {
-				pageTitle = strings.TrimSpace(node.FirstChild.Data)
-				break
+			if len(anchorHref) < 2 {
+				continue
 			}
 
-			pageTitle = strings.TrimSpace(node.Data)
-			break
-		}
-
-		if isH3 { // If no <h2> found, use <h3> as fallback
-			if node.FirstChild != nil {
-				pageTitle = strings.TrimSpace(node.FirstChild.Data)
-				break
+			if string(root_url[len(root_url)-1]) == "/" {
+				trimmedRootUrl = root_url[0 : len(root_url)-1]
 			}
 
-			pageTitle = strings.TrimSpace(node.Data)
+			if string(anchorHref[0]) == "/" { // ex: <a href="/about">
+				newfoundLink = models.Url(string(trimmedRootUrl) + anchorHref)
+			} else if len(anchorHref) >= len("http") &&
+				string(anchorHref[0:len("http")]) != "http" { // ex: <a href="intro.html">
+				newfoundLink = models.Url(fmt.Sprintf("%s/%s", trimmedRootUrl, anchorHref))
+			} else {
+				newfoundLink = models.Url(anchorHref)
+			}
+
+			if len(newfoundLink) < len("http://") {
+				continue
+			}
+
+			var (
+				isHttpUriScheme        bool = len(anchorHref) >= len("http") && (anchorHref[0:len("http")] == "http")
+				isHttpsUriScheme       bool = len(anchorHref) >= len("https") && (anchorHref[0:len("https")] == "https")
+				isAlternativeUriScheme bool = !isHttpUriScheme && !isHttpsUriScheme
+			)
+			if isAlternativeUriScheme {
+				continue
+			}
+
+			// REMOVE ? QUERIES FROM URLs
+
+			// REMOVE mailto: AND ANY OTHER SUCH TYPES OF URLS
+
+			// log.Println()
+			// log.Println("root_url", root_url)
+			// log.Println("trimmedRootUrl", trimmedRootUrl)
+			// log.Println("anchorHref", anchorHref)
+			// log.Println("newfoundLink", newfoundLink)
+			// log.Println("isAlternativeUriScheme", isAlternativeUriScheme)
+			// log.Printf("[%s] Found: %v", root_url, newfoundLink)
+			hyperlinks = append(hyperlinks, newfoundLink.TrimTrailingSlash())
 			break
 		}
 	}
 
-	return pageTitle
-}
-
-func parsePageDescription(root_node *html.Node) string {
-	var (
-		pageDescription string
-	)
-
-	for node := range root_node.Descendants() {
-		var (
-			isMeta bool = node.DataAtom == atom.Meta
-		)
-		if !isMeta {
-			continue
-		}
-
-		var (
-			isMetaDescription bool = slices.Contains(
-				node.Attr,
-				html.Attribute{
-					Key: "name",
-					Val: "description"},
-			)
-		)
-		if !isMetaDescription {
-			continue
-		}
-
-		var (
-			contentIndex = slices.IndexFunc(
-				node.Attr,
-				func(attr html.Attribute) bool {
-					return attr.Key == "content"
-				},
-			)
-			hasContentKey bool = contentIndex != -1
-		)
-		if !hasContentKey {
-			continue
-		}
-
-		pageDescription = strings.TrimSpace(node.Attr[contentIndex].Val)
-		break
-	}
-
-	return pageDescription
+	return hyperlinks
 }
 
 func parsePageBody(root_node *html.Node) (string, error) {
@@ -355,76 +327,104 @@ func parsePageBody(root_node *html.Node) (string, error) {
 	return strings.TrimSpace(sb.String()), err
 }
 
-func findHyperlinks(root_node *html.Node, root_url models.Url) []models.Url {
+func parsePageDescription(root_node *html.Node) string {
 	var (
-		hyperlinks []models.Url
+		pageDescription string
 	)
 
 	for node := range root_node.Descendants() {
-		isAnchor :=
-			node.Type == html.ElementNode &&
-				node.DataAtom == atom.A
-
-		if !isAnchor {
+		var (
+			isMeta bool = node.DataAtom == atom.Meta
+		)
+		if !isMeta {
 			continue
 		}
 
-		for _, attribute := range node.Attr {
-			if attribute.Key != "href" {
-				continue
-			}
-
-			var (
-				trimmedRootUrl models.Url = root_url
-				anchorHref     string     = attribute.Val
-				newfoundLink   models.Url
+		var (
+			isMetaDescription bool = slices.Contains(
+				node.Attr,
+				html.Attribute{
+					Key: "name",
+					Val: "description"},
 			)
+		)
+		if !isMetaDescription {
+			continue
+		}
 
-			if len(anchorHref) < 2 {
-				continue
-			}
-
-			if string(root_url[len(root_url)-1]) == "/" {
-				trimmedRootUrl = root_url[0 : len(root_url)-1]
-			}
-
-			if string(anchorHref[0]) == "/" { // ex: <a href="/about">
-				newfoundLink = models.Url(string(trimmedRootUrl) + anchorHref)
-			} else if len(anchorHref) >= len("http") &&
-				string(anchorHref[0:len("http")]) != "http" { // ex: <a href="intro.html">
-				newfoundLink = models.Url(fmt.Sprintf("%s/%s", trimmedRootUrl, anchorHref))
-			} else {
-				newfoundLink = models.Url(anchorHref)
-			}
-
-			if len(newfoundLink) < len("http://") {
-				continue
-			}
-
-			var (
-				isHttpUriScheme        bool = len(anchorHref) >= len("http") && (anchorHref[0:len("http")] == "http")
-				isHttpsUriScheme       bool = len(anchorHref) >= len("https") && (anchorHref[0:len("https")] == "https")
-				isAlternativeUriScheme bool = !isHttpUriScheme && !isHttpsUriScheme
+		var (
+			contentIndex = slices.IndexFunc(
+				node.Attr,
+				func(attr html.Attribute) bool {
+					return attr.Key == "content"
+				},
 			)
-			if isAlternativeUriScheme {
-				continue
+			hasContentKey bool = contentIndex != -1
+		)
+		if !hasContentKey {
+			continue
+		}
+
+		pageDescription = strings.TrimSpace(node.Attr[contentIndex].Val)
+		break
+	}
+
+	return pageDescription
+}
+
+func parsePageTitle(root_node *html.Node) string {
+	var (
+		pageTitle string
+	)
+
+	for node := range root_node.Descendants() {
+		var (
+			isTitle bool = node.DataAtom == atom.Title
+			isH1    bool = node.DataAtom == atom.H1
+			isH2    bool = node.DataAtom == atom.H2
+			isH3    bool = node.DataAtom == atom.H3
+		)
+
+		if isTitle {
+			if node.FirstChild != nil {
+				pageTitle = strings.TrimSpace(node.FirstChild.Data)
+				break
 			}
 
-			// REMOVE ? QUERIES FROM URLs
+			pageTitle = strings.TrimSpace(node.Data)
+			break
+		}
 
-			// REMOVE mailto: AND ANY OTHER SUCH TYPES OF URLS
+		if isH1 { // If no <title> found, use <h1> as fallback
+			if node.FirstChild != nil {
+				pageTitle = strings.TrimSpace(node.FirstChild.Data)
+				break
+			}
 
-			// log.Println()
-			// log.Println("root_url", root_url)
-			// log.Println("trimmedRootUrl", trimmedRootUrl)
-			// log.Println("anchorHref", anchorHref)
-			// log.Println("newfoundLink", newfoundLink)
-			// log.Println("isAlternativeUriScheme", isAlternativeUriScheme)
-			// log.Printf("[%s] Found: %v", root_url, newfoundLink)
-			hyperlinks = append(hyperlinks, newfoundLink.TrimTrailingSlash())
+			pageTitle = strings.TrimSpace(node.Data)
+			break
+		}
+
+		if isH2 { // If no <h1> found, use <h2> as fallback
+			if node.FirstChild != nil {
+				pageTitle = strings.TrimSpace(node.FirstChild.Data)
+				break
+			}
+
+			pageTitle = strings.TrimSpace(node.Data)
+			break
+		}
+
+		if isH3 { // If no <h2> found, use <h3> as fallback
+			if node.FirstChild != nil {
+				pageTitle = strings.TrimSpace(node.FirstChild.Data)
+				break
+			}
+
+			pageTitle = strings.TrimSpace(node.Data)
 			break
 		}
 	}
 
-	return hyperlinks
+	return pageTitle
 }
