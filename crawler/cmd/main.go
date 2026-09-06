@@ -24,11 +24,11 @@ const (
 
 var (
 	seed_urls = []models.Url{
-		"https://nicholasgarcia.com",
-		"https://angeldolly.com/",
-		"https://nyscyra.net/",
-		"https://0xffff.one",
-		"https://v2ex.com",
+		// models.Url("https://nicholasgarcia.com").TrimTrailingSlash(),
+		models.Url("https://angeldolly.com/").TrimTrailingSlash(),
+		models.Url("https://nyscyra.net/").TrimTrailingSlash(),
+		models.Url("https://0xffff.one").TrimTrailingSlash(),
+		models.Url("https://v2ex.com").TrimTrailingSlash(),
 	}
 	pagesQueue = models.QueueOfPages{Links: []models.Url{}, Mu: sync.Mutex{}}
 )
@@ -50,7 +50,12 @@ func main() {
 		wg.Add(1)
 		crwaler_id += 1
 
-		go crawl(seed_url, &pagesQueue, crwaler_id, &crawl_iterator, &wg)
+		err := pagesQueue.Enqueue([]models.Url{seed_url}, database.DB)
+		if err != nil {
+			log.Printf("enqueue seed URLs failed: %v", err)
+		}
+
+		go crawl(&pagesQueue, &crawl_iterator, &wg)
 
 		time.Sleep(CRAWLER_POLITENESS_INTERVAL / 2)
 	}
@@ -58,20 +63,26 @@ func main() {
 	wg.Wait()
 }
 
-func crawl(seed_url models.Url, queue *models.QueueOfPages, crawler_id uint, iterator *uint, wg *sync.WaitGroup) {
+func crawl(queue *models.QueueOfPages, iterator *uint, wg *sync.WaitGroup) {
 	defer wg.Done()
 
 	// TODO
 	// defer func() { recover() }()
 
-	queue.Enqueue([]models.Url{seed_url})
-
-	for len(queue.Links) > 0 {
+	for {
 		var (
-			page models.Webpage
+			page       models.Webpage
+			currentUrl models.Url = "void"
 		)
 
-		currentUrl := queue.Dequeue()
+		currentUrl, err := queue.Dequeue(database.DB)
+		if err != nil {
+			continue
+		}
+
+		page.Url = currentUrl.TrimTrailingSlash()
+		page.Domain = page.Url.GetSecondAndTopLevelDomain()
+		// log.Println(page.Url)
 
 		// IF THIS URL'S DOMAIN HAS BEEN HIT
 		// WITHIN THE LAST CRAWLER_POLITENESS_SLEEP_TIME (15 seconds):
@@ -79,7 +90,7 @@ func crawl(seed_url models.Url, queue *models.QueueOfPages, crawler_id uint, ite
 		// IF THIS URL HAS BEEN HIT
 		// WITHIN THE LAST CRAWLER_MINIMUM_OLDNESS_THRESHOLD (30 days):
 		// continue
-		page.Domain = currentUrl.TrimTrailingSlash().GetSecondAndTopLevelDomain()
+
 		if page.Domain.HasBeenCrawledTooRecently(CRAWLER_POLITENESS_INTERVAL) {
 			time.Sleep(CRAWLER_POLITENESS_INTERVAL)
 		}
@@ -89,7 +100,6 @@ func crawl(seed_url models.Url, queue *models.QueueOfPages, crawler_id uint, ite
 			log.Printf("[%s] GET request unfulfilled: %v", currentUrl, err)
 			continue
 		}
-		defer response.Body.Close()
 
 		var (
 			isRequestSuccessful bool = response.StatusCode >= 200 && response.StatusCode < 300
@@ -132,10 +142,13 @@ func crawl(seed_url models.Url, queue *models.QueueOfPages, crawler_id uint, ite
 			continue
 		}
 
-		hyperlinks := findHyperlinks(doc, currentUrl)
-		queue.Enqueue(hyperlinks)
+		page.Outneighbours = findHyperlinks(doc, currentUrl)
+		err = queue.Enqueue(page.Outneighbours, database.DB)
+		if err != nil {
+			log.Printf("[%s] enqueue failed: %v", currentUrl, err)
+			continue
+		}
 
-		page.Outneighbours = hyperlinks
 		page.Title = parsePageTitle(doc)
 		page.Description = parsePageDescription(doc)
 
@@ -148,18 +161,18 @@ func crawl(seed_url models.Url, queue *models.QueueOfPages, crawler_id uint, ite
 		log.Println()
 		log.Printf("[%s]", currentUrl)
 		// log.Println("crawler:       ", crawler_id)
-		// log.Println("iter:          ", *iterator)
+		log.Println("iter:          ", *iterator)
 		// log.Println("url:           ", currentUrl)
-		// log.Println("title:         ", page.Title)
-		// log.Println("desc:          ", page.Description)
+		log.Println("title:         ", page.Title)
+		log.Println("desc:          ", page.Description)
 		// log.Println("body:          ", len(page.Text), "bytes long")
-		// log.Println("outneighbours: ", len(page.Outneighbours))
-		// log.Println("response_body: ", len(page.ResponseBody), "bytes long")
-		log.Println("queue: ", len(queue.Links), "links long")
+		log.Println("outneighbours: ", len(page.Outneighbours))
+		log.Println("response_body: ", len(page.ResponseBody), "bytes long")
+		// log.Println("queue: ", len(queue.Links), "links long")
 
+		response.Body.Close()
 		*iterator += 1
 	}
-
 }
 
 func parsePageTitle(root_node *html.Node) string {
