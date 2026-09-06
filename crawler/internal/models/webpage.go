@@ -24,164 +24,117 @@ type (
 )
 
 func (page *Webpage) Save(db *sql.DB) error {
-	var (
-		isNewlyDiscoveredSite bool
-		isNewlyDiscoveredPage bool
-
-		siteId int
-		pageId int
-	)
 
 	tx, err := db.Begin()
 	if err != nil {
-		return fmt.Errorf("start transaction failed: %w", err)
+		return fmt.Errorf("start tx failed: %w", err)
 	}
-	defer func() {
-		if err != nil {
-			_ = tx.Rollback()
-			return
-		}
-	}()
+	defer tx.Rollback()
 
-	// Verify if site is already recorded in database
-	stmt, err := tx.Prepare(`SELECT id FROM sites WHERE second_and_top_level_domain = $1;`)
-	if err != nil {
-		return fmt.Errorf("prepare 'site' SELECT statement failed: %w", err)
-	}
-	defer stmt.Close()
-	rows, err := stmt.Query(page.Domain)
-	if err != nil {
-		return fmt.Errorf("execute 'site' SELECT statement failed: %w", err)
-	}
-	defer rows.Close()
-	for rows.Next() {
-		err = rows.Scan(siteId)
-		if err != nil {
-			return fmt.Errorf("scan returned SELECT site id failed: %w", err)
-		}
-		isNewlyDiscoveredSite = true
+	var (
+		siteId           int64
+		isSiteInDatabase bool = true
+	)
+	err = tx.QueryRow(
+		`SELECT id 
+		FROM sites
+		WHERE second_and_top_level_domain = $1;`,
+		page.Domain,
+	).Scan(&siteId)
+	if err == sql.ErrNoRows {
+		isSiteInDatabase = false
+	} else if err != nil {
+		return fmt.Errorf("SELECT site id failed: %w", err)
 	}
 
-	if isNewlyDiscoveredSite {
-		stmt, err = tx.Prepare(`INSERT INTO Sites (second_and_top_level_domain) VALUES ($1);`)
-		if err != nil {
-			return fmt.Errorf("prepare 'site' INSERT statement failed: %w", err)
-		}
-		defer stmt.Close()
+	var (
+		pageId           int64
+		isPageInDatabase bool = true
+	)
+	err = tx.QueryRow(
+		`SELECT id 
+		FROM pages
+		WHERE link = $1;`,
+		page.Url,
+	).Scan(&pageId)
+	if err == sql.ErrNoRows {
+		isPageInDatabase = false
+	} else if err != nil {
+		return fmt.Errorf("SELECT page id failed: %w", err)
+	}
 
-		result, err := stmt.Exec(page.Domain)
-		if err != nil {
-			return fmt.Errorf("execute 'site' INSERT transaction failed: %w", err)
-		}
+	fmt.Println("isSiteInDatabase", isSiteInDatabase)
+	fmt.Println("isPageInDatabase", isPageInDatabase)
 
-		var lastInsertId int64
-		lastInsertId, err = result.LastInsertId()
-		if err != nil {
-			return fmt.Errorf("parse returned INSERT site id failed: %w", err)
-		}
-		siteId = int(lastInsertId)
-	} else {
-		stmt, err = tx.Prepare(`UPDATE sites
-			SET
-				date_last_crawled = $1
-			
-			WHERE id = $2;`)
-		if err != nil {
-			return fmt.Errorf("prepare 'sites' UDPATE statement failed: %w", err)
-		}
-		defer stmt.Close()
-
-		_, err := stmt.Exec(
-			time.Now(),
-			siteId,
+	if !isSiteInDatabase {
+		stmt, err := tx.Prepare(
+			`INSERT INTO sites (second_and_top_level_domain)
+			VALUES ($1)
+			RETURNING id;`,
 		)
 		if err != nil {
-			return fmt.Errorf("execute 'sites' UDPATE transaction failed: %w", err)
+			return fmt.Errorf("prepare INSERT site stmt failed: %w", err)
 		}
-	}
 
-	// Verify if page is already recorded in database
-	stmt, err = tx.Prepare(`SELECT id FROM pages WHERE link = $1;`)
-	if err != nil {
-		return fmt.Errorf("prepare 'page' SELECT statement failed: %w", err)
-	}
-	defer stmt.Close()
-	rows, err = stmt.Query(page.Url)
-	if err != nil {
-		return fmt.Errorf("execute 'page' SELECT statement failed: %w", err)
-	}
-	defer rows.Close()
-	for rows.Next() {
-		err = rows.Scan(siteId)
+		err = stmt.QueryRow(page.Domain).Scan(&siteId)
 		if err != nil {
-			return fmt.Errorf("scan returned SELECT page id failed: %w", err)
+			return fmt.Errorf("execute INSERT site stmt failed: %w", err)
 		}
-		isNewlyDiscoveredPage = true
+	} else {
+		_, err = tx.Exec(
+			`UPDATE sites
+			SET date_last_crawled = $1
+			WHERE id = $2;`,
+			time.Now(), siteId)
+		if err != nil {
+			return fmt.Errorf("update site date_last_crawled failed: %w", err)
+		}
 	}
 
-	if isNewlyDiscoveredPage {
-		stmt, err = tx.Prepare(`INSERT INTO pages (
-				title, 
+	if !isPageInDatabase {
+		stmt, err := tx.Prepare(
+			`INSERT INTO pages (
+				site_id,
+				title,
 				description,
+				link,
 				body_text,
-				response_body,
-			) 
-			VALUES ($1, $2, $3, $4);`)
+				response_body
+			)
+			VALUES ($1, $2, $3, $4, $5, $6);`,
+		)
 		if err != nil {
-			return fmt.Errorf("prepare 'pages' INSERT statement failed: %w", err)
+			return fmt.Errorf("prepare INSERT page stmt failed: %w", err)
 		}
-		defer stmt.Close()
 
-		result, err := stmt.Exec(
+		_, err = stmt.Exec(
+			siteId,
 			page.Title,
 			page.Description,
+			page.Url.TrimTrailingSlash(),
 			page.Text,
 			page.ResponseBody,
 		)
 		if err != nil {
-			return fmt.Errorf("execute 'pages' INSERT transaction failed: %w", err)
+			return fmt.Errorf("execute INSERT page stmt failed: %w", err)
 		}
-
-		var lastInsertId int64
-		lastInsertId, err = result.LastInsertId()
-		if err != nil {
-			return fmt.Errorf("parse returned INSERT page id failed: %w", err)
-		}
-		pageId = int(lastInsertId)
 	} else {
-		stmt, err = tx.Prepare(`UPDATE pages
-			SET
-				title = $1,
-				description = $2,
-				body_text = $3,
-				response_body = $4,
-				date_last_crawled = $5
-			
-			WHERE id = $6;`)
+		_, err = tx.Exec(
+			`UPDATE pages
+			SET date_last_crawled = $1
+			WHERE id = $2;`,
+			time.Now(), pageId)
 		if err != nil {
-			return fmt.Errorf("prepare 'pages' UDPATE statement failed: %w", err)
-		}
-		defer stmt.Close()
-
-		_, err := stmt.Exec(
-			page.Title,
-			page.Description,
-			page.Text,
-			page.ResponseBody,
-			time.Now(),
-			pageId,
-		)
-		if err != nil {
-			return fmt.Errorf("execute 'pages' UDPATE transaction failed: %w", err)
+			return fmt.Errorf("update page date_last_crawled failed: %w", err)
 		}
 	}
 
 	err = tx.Commit()
 	if err != nil {
-		return fmt.Errorf("commit transaction failed: %w", err)
+		return fmt.Errorf("commit tx failed: %w", err)
 	}
 
-	return err
+	return nil
 }
 
 func (p *Webpage) Scan(value any) error {
