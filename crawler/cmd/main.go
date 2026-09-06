@@ -29,6 +29,11 @@ var (
 		models.Url("https://nyscyra.net/").TrimTrailingSlash(),
 		models.Url("https://0xffff.one").TrimTrailingSlash(),
 		models.Url("https://v2ex.com").TrimTrailingSlash(),
+		models.Url("https://skateboard.nekoweb.org/webring/phightring").TrimTrailingSlash(),
+		models.Url("https://bookscorpion.neocities.org/webrings").TrimTrailingSlash(),
+		models.Url("https://ryqrtz.nekoweb.org/webrings.html").TrimTrailingSlash(),
+		models.Url("https://webri.ng/").TrimTrailingSlash(),
+		models.Url("https://ryqrtz.nekoweb.org/home.html").TrimTrailingSlash(),
 	}
 	pagesQueue = models.QueueOfPages{Links: []models.Url{}, Mu: sync.Mutex{}}
 )
