@@ -18,8 +18,8 @@ import (
 )
 
 const (
-	CRAWLER_POLITENESS_INTERVAL       time.Duration = 12 * time.Second
-	CRAWLER_MINIMUM_OLDNESS_THRESHOLD time.Duration = 2592000 * time.Second // 30 days
+	CRAWLER_POLITENESS_INTERVAL time.Duration = 12 * time.Second
+	CRAWLER_OLDNESS_THRESHOLD   time.Duration = 86400 * time.Second // 7 days
 )
 
 var (
@@ -40,7 +40,6 @@ var (
 
 func main() {
 	var (
-		crwaler_id     uint = 0
 		crawl_iterator uint = 0
 		wg             sync.WaitGroup
 	)
@@ -53,7 +52,6 @@ func main() {
 
 	for _, seed_url := range seed_urls {
 		wg.Add(1)
-		crwaler_id += 1
 
 		err := pagesQueue.Enqueue([]models.Url{seed_url}, database.DB)
 		if err != nil {
@@ -62,19 +60,8 @@ func main() {
 
 		go crawl(&pagesQueue, &crawl_iterator, &wg)
 
-		time.Sleep(CRAWLER_POLITENESS_INTERVAL / 2)
+		time.Sleep(CRAWLER_POLITENESS_INTERVAL)
 	}
-
-	go func() {
-		for {
-			if crawl_iterator < uint(len(seed_urls)) {
-				continue
-			}
-
-			pagesQueue.Cleanup(database.DB)
-			crawl_iterator = 1
-		}
-	}()
 
 	wg.Wait()
 }
@@ -98,21 +85,22 @@ func crawl(queue *models.QueueOfPages, iterator *uint, wg *sync.WaitGroup) {
 
 		page.Url = currentUrl.TrimTrailingSlash()
 		page.Domain = page.Url.GetSecondAndTopLevelDomain()
-		// log.Println(page.Url)
 
-		// IF THIS URL'S DOMAIN HAS BEEN HIT
-		// WITHIN THE LAST CRAWLER_POLITENESS_SLEEP_TIME (15 seconds):
+		isPageTooRecentlyCrawled, err := page.Url.TrimTrailingSlash().IsTooRecentlyCrawled(database.DB, CRAWLER_OLDNESS_THRESHOLD)
+		if err != nil {
+			log.Printf("[%s] determine page freshness failed: %v", currentUrl, err)
+			continue
+		}
+		if isPageTooRecentlyCrawled {
+			continue
+		}
 
-		// IF THIS URL HAS BEEN HIT
-		// WITHIN THE LAST CRAWLER_MINIMUM_OLDNESS_THRESHOLD (30 days):
-		// continue
-
-		hasBeenRequestedTooRecently, err := page.Domain.HasBeenRequestedTooRecently(CRAWLER_POLITENESS_INTERVAL, &pagesQueue, database.DB)
+		hasDomainBeenRequestedTooRecently, err := page.Domain.HasBeenRequestedTooRecently(CRAWLER_POLITENESS_INTERVAL, &pagesQueue, database.DB)
 		if err != nil {
 			log.Printf("[%s] determine necessary politeness failed: %v", currentUrl, err)
 			continue
 		}
-		if hasBeenRequestedTooRecently {
+		if hasDomainBeenRequestedTooRecently {
 			time.Sleep(CRAWLER_POLITENESS_INTERVAL)
 		}
 
@@ -136,7 +124,6 @@ func crawl(queue *models.QueueOfPages, iterator *uint, wg *sync.WaitGroup) {
 		}{
 			asReadCloser: response.Body,
 		}
-
 		body.asBytes, err = io.ReadAll(response.Body)
 		if err != nil {
 			log.Printf("[%s] read response body failed: %v", currentUrl, err)

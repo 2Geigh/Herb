@@ -1,7 +1,10 @@
 package models
 
 import (
+	"database/sql"
+	"fmt"
 	"strings"
+	"time"
 )
 
 type (
@@ -29,6 +32,33 @@ func (url Url) GetSecondAndTopLevelDomain() SecondAndTopLevelDomain {
 	secondLevel := domainLevels[len(domainLevels)-2]
 
 	return SecondAndTopLevelDomain(secondLevel + "." + topLevel)
+}
+
+func (url Url) IsTooRecentlyCrawled(db *sql.DB, oldness_threshold time.Duration) (bool, error) {
+	var (
+		lastCrawled          time.Time
+		isTooRecentlyCrawled bool = false
+	)
+
+	stmt, err := db.Prepare(
+		`SELECT date_last_crawled
+		FROM pages
+		WHERE link = $1;`,
+	)
+	if err != nil {
+		return isTooRecentlyCrawled, fmt.Errorf("prepare stmt failed: %w", err)
+	}
+
+	err = stmt.QueryRow(url.TrimTrailingSlash()).Scan(&lastCrawled)
+	if err != nil && err != sql.ErrNoRows {
+		return isTooRecentlyCrawled, fmt.Errorf("execute stmt failed: %w", err)
+	}
+
+	if time.Since(lastCrawled) < oldness_threshold {
+		isTooRecentlyCrawled = true
+	}
+
+	return isTooRecentlyCrawled, nil
 }
 
 func (url Url) TrimTrailingSlash() Url {
