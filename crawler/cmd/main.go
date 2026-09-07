@@ -51,6 +51,8 @@ var (
 		models.Url("https://theotaku.com/").TrimTrailingSlash(),
 		models.Url("https://rollcake.site/").TrimTrailingSlash(),
 		models.Url("https://www.royal-drama.net/theemperorsnewgroove/").TrimTrailingSlash(),
+		models.Url("https://indieweb.org/").TrimTrailingSlash(),
+		models.Url("https://gusbus.space/smallweb-subway/").TrimTrailingSlash(),
 	}
 	pagesQueue = models.QueueOfPages{Links: []models.Url{}, Mu: sync.Mutex{}}
 )
@@ -102,11 +104,11 @@ func crawl(queue *models.QueueOfPages, iterator *uint, wg *sync.WaitGroup) {
 
 	defer wg.Done()
 
-	defer func(link models.Url) {
+	defer func() {
 		raisedError := recover()
 
-		log.Printf(`[%s] PANICKED AFTER "%s": %v`, link, checkpoint, raisedError)
-	}(currentUrl)
+		log.Printf(`[%s] PANICKED AFTER "%s": %v`, currentUrl, checkpoint, raisedError)
+	}()
 
 	for {
 		currentUrl, err = queue.Dequeue(database.DB)
