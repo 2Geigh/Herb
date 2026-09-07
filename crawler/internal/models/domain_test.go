@@ -72,6 +72,11 @@ func TestDomain_GetSecondAndTopLevelDomain(t *testing.T) {
 			input: models.Domain("https://shop.example.co.uk/products"),
 			want:  models.Domain("co.uk"),
 		},
+		{
+			name:  "Empty URL",
+			input: models.Domain(""),
+			want:  models.Domain(""),
+		},
 	}
 
 	for _, tt := range tests {

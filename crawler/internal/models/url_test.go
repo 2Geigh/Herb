@@ -13,6 +13,11 @@ func TestUrl_GetDomain(t *testing.T) {
 		want models.Domain
 	}{
 		{
+			name: "empty URL",
+			url:  models.Url(""),
+			want: models.Domain(""),
+		},
+		{
 			name: "HTTPS YouTube URL",
 			url:  models.Url("https://www.youtube.com/watch?v=dQw4w9WgXcQ"),
 			want: models.Domain("youtube.com"),
