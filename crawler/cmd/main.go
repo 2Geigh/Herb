@@ -179,7 +179,7 @@ func crawl(queue *models.QueueOfPages, iterator *uint, wg *sync.WaitGroup) {
 			continue
 		}
 
-		log.Println()
+		// log.Println()
 		log.Printf("[%s]", currentUrl)
 		// log.Println("crawler:       ", crawler_id)
 		// log.Println("iter:          ", *iterator)

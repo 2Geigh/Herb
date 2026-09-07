@@ -63,9 +63,6 @@ func (page *Webpage) Save(db *sql.DB) error {
 		return fmt.Errorf("SELECT page id failed: %w", err)
 	}
 
-	fmt.Println("isSiteInDatabase", isSiteInDatabase)
-	fmt.Println("isPageInDatabase", isPageInDatabase)
-
 	if !isSiteInDatabase {
 		stmt, err := tx.Prepare(
 			`INSERT INTO sites (second_and_top_level_domain)
