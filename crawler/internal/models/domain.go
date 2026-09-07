@@ -27,6 +27,11 @@ func (d Domain) GetSecondAndTopLevelDomain() Domain {
 
 	domainWithoutRoutes, _, _ := strings.Cut(string(domainWithoutProtocol), "/")
 
+	_, _, isDomainMultiLevel := strings.Cut(domainWithoutRoutes, ".")
+	if !isDomainMultiLevel {
+		return Domain(domainWithoutRoutes)
+	}
+
 	domainLevels := strings.Split(domainWithoutRoutes, ".")
 
 	topLevel := domainLevels[len(domainLevels)-1]
