@@ -10,7 +10,7 @@ type (
 	SecondAndTopLevelDomain string
 )
 
-func (d SecondAndTopLevelDomain) HasBeenRequestedTooRecently(politeness_interval time.Duration, queue QueueOfPages, db *sql.DB) (bool, error) {
+func (d SecondAndTopLevelDomain) HasBeenRequestedTooRecently(politeness_interval time.Duration, queue *QueueOfPages, db *sql.DB) (bool, error) {
 	var (
 		lastCrawled time.Time
 
