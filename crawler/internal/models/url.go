@@ -15,7 +15,7 @@ func (url Url) GetSecondAndTopLevelDomain() SecondAndTopLevelDomain {
 	/*
 
 		>>> getDomain(https://www.youtube.com/watch?v=dQw4w9WgXcQ)
-		https://www.youtube.com
+		youtube.com
 
 	*/
 
@@ -29,6 +29,11 @@ func (url Url) GetSecondAndTopLevelDomain() SecondAndTopLevelDomain {
 	domainLevels := strings.Split(domainWithoutRoutes, ".")
 
 	topLevel := domainLevels[len(domainLevels)-1]
+
+	if len(topLevel) < 2 {
+		return SecondAndTopLevelDomain(topLevel)
+	}
+
 	secondLevel := domainLevels[len(domainLevels)-2]
 
 	return SecondAndTopLevelDomain(secondLevel + "." + topLevel)

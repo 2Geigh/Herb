@@ -20,6 +20,8 @@ import (
 const (
 	CRAWLER_POLITENESS_INTERVAL time.Duration = 12 * time.Second
 	CRAWLER_OLDNESS_THRESHOLD   time.Duration = 86400 * time.Second // 7 days
+
+	NUMBER_OF_CRAWLERS = 100
 )
 
 var (
@@ -34,6 +36,7 @@ var (
 		models.Url("https://ryqrtz.nekoweb.org/webrings.html").TrimTrailingSlash(),
 		models.Url("https://webri.ng/").TrimTrailingSlash(),
 		models.Url("https://ryqrtz.nekoweb.org/home.html").TrimTrailingSlash(),
+		models.Url("https://mikh.net/affiliates.php").TrimTrailingSlash(),
 	}
 	pagesQueue = models.QueueOfPages{Links: []models.Url{}, Mu: sync.Mutex{}}
 )
@@ -63,21 +66,32 @@ func main() {
 		time.Sleep(CRAWLER_POLITENESS_INTERVAL)
 	}
 
+	for range NUMBER_OF_CRAWLERS {
+		wg.Add(1)
+
+		go crawl(&pagesQueue, &crawl_iterator, &wg)
+
+		time.Sleep(CRAWLER_POLITENESS_INTERVAL)
+	}
+
 	wg.Wait()
 }
 
 func crawl(queue *models.QueueOfPages, iterator *uint, wg *sync.WaitGroup) {
+	var (
+		page       models.Webpage
+		currentUrl models.Url = "void"
+	)
+
 	defer wg.Done()
 
-	// TODO
-	// defer func() { recover() }()
+	defer func(link models.Url) {
+		raisedError := recover()
+
+		log.Printf("[%s] PANICKED: %v", link, raisedError)
+	}(currentUrl)
 
 	for {
-		var (
-			page       models.Webpage
-			currentUrl models.Url = "void"
-		)
-
 		currentUrl, err := queue.Dequeue(database.DB)
 		if err != nil {
 			continue
