@@ -80,7 +80,7 @@ func InitializeDomainBlacklist(db *sql.DB) error {
 		return fmt.Errorf("commit tx failed: %w", err)
 	}
 
-	fmt.Println("Domain blacklist initialized successfully")
+	log.Println("Domain blacklist initialized successfully")
 
 	return nil
 }
