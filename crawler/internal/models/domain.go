@@ -15,8 +15,8 @@ func (d SecondAndTopLevelDomain) HasBeenRequestedTooRecently(politeness_interval
 		lastCrawled time.Time
 
 		// better to be too
-		// polite than not polite
-		// polite to websites
+		// polite than not nice enough
+		// to an API
 		hasBeenCrawledTooRecently bool = true
 	)
 
