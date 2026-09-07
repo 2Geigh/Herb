@@ -3,6 +3,7 @@ package database
 import (
 	"database/sql"
 	"embed"
+	"encoding/json"
 	"fmt"
 	"log"
 	"os"
@@ -11,12 +12,78 @@ import (
 	"github.com/pressly/goose/v3"
 )
 
+type (
+	RankedDomain struct {
+		Position int     `json:"position"`
+		Domain   string  `json:"domain"`
+		Count    int     `json:"count"`
+		Etv      float64 `json:"etv"`
+	}
+)
+
 var (
 	DB *sql.DB = nil
 
 	//go:embed migrations/*.sql
 	embedMigrations embed.FS
+
+	//go:embed data/*.json
+	embedData embed.FS
 )
+
+func InitializeDomainBlacklist(db *sql.DB) error {
+	var (
+		topThousandDomains = struct {
+			asBytes  []byte
+			asString string
+			asJson   []RankedDomain
+		}{}
+
+		err error
+	)
+
+	topThousandDomains.asBytes, err = embedData.ReadFile("data/ranked_domains.json")
+	if err != nil {
+		return fmt.Errorf("read file failed: %w", err)
+	}
+
+	err = json.Unmarshal(topThousandDomains.asBytes, &topThousandDomains.asJson)
+	if err != nil {
+		return fmt.Errorf("unmarshal json failed: %w", err)
+	}
+
+	tx, err := db.Begin()
+	if err != nil {
+		return fmt.Errorf("begin tx failed: %w", err)
+	}
+	defer tx.Rollback()
+
+	tx.Exec(`DELETE FROM domain_blacklist *;`)
+
+	for _, entry := range topThousandDomains.asJson {
+		stmt, err := tx.Prepare(
+			`INSERT INTO domain_blacklist (domain) values ($1);`,
+		)
+		if err != nil {
+			return fmt.Errorf("prepare stmt failed: %w", err)
+		}
+
+		_, err = stmt.Exec(entry.Domain)
+		if err != nil {
+			return fmt.Errorf("execute stmt failed: %w", err)
+		}
+		stmt.Close()
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		return fmt.Errorf("commit tx failed: %w", err)
+	}
+
+	fmt.Println("Domain blacklist initialized successfully")
+
+	return nil
+}
 
 func InitializeDB() error {
 	log.Println("Connecting to Postgresql...")
@@ -59,6 +126,16 @@ func InitializeDB() error {
 	return nil
 }
 
+func ReportDatabaseHealth() {
+	// for {
+	stats := DB.Stats()
+	log.Printf(`[DB STATS] InUse: %d | Idle: %d | Open: %d | WaitCount: %d`,
+		stats.InUse, stats.Idle, stats.OpenConnections, stats.WaitCount)
+
+	// time.Sleep(5 * time.Second)
+	// }
+}
+
 func migrate(db *sql.DB) error {
 
 	goose.SetBaseFS(embedMigrations)
@@ -74,14 +151,4 @@ func migrate(db *sql.DB) error {
 	}
 
 	return nil
-}
-
-func ReportDatabaseHealth() {
-	// for {
-	stats := DB.Stats()
-	log.Printf(`[DB STATS] InUse: %d | Idle: %d | Open: %d | WaitCount: %d`,
-		stats.InUse, stats.Idle, stats.OpenConnections, stats.WaitCount)
-
-	// time.Sleep(5 * time.Second)
-	// }
 }
