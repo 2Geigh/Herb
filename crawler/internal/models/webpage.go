@@ -12,14 +12,15 @@ type (
 	Webpage struct {
 		ResponseBody string `json:"response_body"`
 
-		Domain            SecondAndTopLevelDomain `json:"domain"`
-		Url               Url                     `json:"Url"`
-		Title             string                  `json:"title"`
-		Description       string                  `json:"description"`
-		Text              string                  `json:"text"`
-		Outneighbours     []Url                   `json:"outneighbours"`
-		Date_discovered   time.Time               `json:"date_discovered"`
-		Date_last_crawled time.Time               `json:"date_last_crawled"`
+		FullDomain              Domain    `json:"full_domain"`
+		TopAndSecondLevelDomain Domain    `json:"top_and_second_level_domain"`
+		Url                     Url       `json:"Url"`
+		Title                   string    `json:"title"`
+		Description             string    `json:"description"`
+		Text                    string    `json:"text"`
+		Outneighbours           []Url     `json:"outneighbours"`
+		Date_discovered         time.Time `json:"date_discovered"`
+		Date_last_crawled       time.Time `json:"date_last_crawled"`
 	}
 )
 
@@ -38,8 +39,8 @@ func (page *Webpage) Save(db *sql.DB) error {
 	err = tx.QueryRow(
 		`SELECT id 
 		FROM sites
-		WHERE second_and_top_level_domain = $1;`,
-		page.Domain,
+		WHERE full_domain = $1;`,
+		page.FullDomain,
 	).Scan(&siteId)
 	if err == sql.ErrNoRows {
 		isSiteInDatabase = false
@@ -65,15 +66,18 @@ func (page *Webpage) Save(db *sql.DB) error {
 
 	if !isSiteInDatabase {
 		stmt, err := tx.Prepare(
-			`INSERT INTO sites (second_and_top_level_domain)
-			VALUES ($1)
+			`INSERT INTO sites (
+				second_and_top_level_domain,
+				full_domain
+			)
+			VALUES ($1, $2)
 			RETURNING id;`,
 		)
 		if err != nil {
 			return fmt.Errorf("prepare INSERT site stmt failed: %w", err)
 		}
 
-		err = stmt.QueryRow(page.Domain).Scan(&siteId)
+		err = stmt.QueryRow(page.TopAndSecondLevelDomain, page.FullDomain).Scan(&siteId)
 		if err != nil {
 			return fmt.Errorf("execute INSERT site stmt failed: %w", err)
 		}

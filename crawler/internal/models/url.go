@@ -11,7 +11,7 @@ type (
 	Url string
 )
 
-func (url Url) GetSecondAndTopLevelDomain() SecondAndTopLevelDomain {
+func (url Url) GetDomain() Domain {
 	/*
 
 		>>> getDomain(https://www.youtube.com/watch?v=dQw4w9WgXcQ)
@@ -26,17 +26,12 @@ func (url Url) GetSecondAndTopLevelDomain() SecondAndTopLevelDomain {
 	// protocol := linkComponents[0] + "://"
 	domainWithoutRoutes, _, _ := strings.Cut(linkComponents[1], "/")
 
-	domainLevels := strings.Split(domainWithoutRoutes, ".")
-
-	topLevel := domainLevels[len(domainLevels)-1]
-
-	if len(topLevel) < 2 {
-		return SecondAndTopLevelDomain(topLevel)
+	_, domainWithoutWWW, containsWWW := strings.Cut(domainWithoutRoutes, "www.")
+	if containsWWW {
+		return Domain(domainWithoutWWW)
 	}
 
-	secondLevel := domainLevels[len(domainLevels)-2]
-
-	return SecondAndTopLevelDomain(secondLevel + "." + topLevel)
+	return Domain(domainWithoutRoutes)
 }
 
 func (url Url) IsTooRecentlyCrawled(db *sql.DB, oldness_threshold time.Duration) (bool, error) {

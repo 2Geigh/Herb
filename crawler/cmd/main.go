@@ -21,7 +21,7 @@ const (
 	CRAWLER_POLITENESS_INTERVAL time.Duration = 12 * time.Second
 	CRAWLER_OLDNESS_THRESHOLD   time.Duration = 86400 * time.Second // 7 days
 
-	NUMBER_OF_CRAWLERS = 5
+	NUMBER_OF_CRAWLERS = 1
 )
 
 var (
@@ -38,7 +38,7 @@ var (
 		models.Url("https://webri.ng/").TrimTrailingSlash(),
 		models.Url("https://ryqrtz.nekoweb.org/home.html").TrimTrailingSlash(),
 		models.Url("https://mikh.net/affiliates.php").TrimTrailingSlash(),
-		models.Url("https://msx.gay/"),
+		models.Url("https://msx.gay/").TrimTrailingSlash(),
 		models.Url("https://piclog.blue/index.php").TrimTrailingSlash(),
 		models.Url("https://silly.city/").TrimTrailingSlash(),
 		models.Url("https://gummyring.neocities.org/").TrimTrailingSlash(),
@@ -47,6 +47,9 @@ var (
 		models.Url("https://linklane.net/").TrimTrailingSlash(),
 		models.Url("https://smoothsailing.asclaria.org/").TrimTrailingSlash(),
 		models.Url("https://silly.city/").TrimTrailingSlash(),
+		models.Url("https://runegod.net/").TrimTrailingSlash(),
+		models.Url("https://theotaku.com/").TrimTrailingSlash(),
+		models.Url("https://rollcake.site/").TrimTrailingSlash(),
 	}
 	pagesQueue = models.QueueOfPages{Links: []models.Url{}, Mu: sync.Mutex{}}
 )
@@ -107,7 +110,8 @@ func crawl(queue *models.QueueOfPages, iterator *uint, wg *sync.WaitGroup) {
 		}
 
 		page.Url = currentUrl.TrimTrailingSlash()
-		page.Domain = page.Url.GetSecondAndTopLevelDomain()
+		page.FullDomain = page.Url.GetDomain()
+		page.TopAndSecondLevelDomain = page.FullDomain.GetSecondAndTopLevelDomain()
 
 		isPageTooRecentlyCrawled, err := page.Url.TrimTrailingSlash().IsTooRecentlyCrawled(database.DB, CRAWLER_OLDNESS_THRESHOLD)
 		if err != nil {
@@ -118,7 +122,7 @@ func crawl(queue *models.QueueOfPages, iterator *uint, wg *sync.WaitGroup) {
 			continue
 		}
 
-		hasDomainBeenRequestedTooRecently, err := page.Domain.HasBeenRequestedTooRecently(CRAWLER_POLITENESS_INTERVAL, &pagesQueue, database.DB)
+		hasDomainBeenRequestedTooRecently, err := page.TopAndSecondLevelDomain.HasBeenRequestedTooRecently(CRAWLER_POLITENESS_INTERVAL, &pagesQueue, database.DB)
 		if err != nil {
 			log.Printf("[%s] determine necessary politeness failed: %v", currentUrl, err)
 			continue
@@ -185,7 +189,7 @@ func crawl(queue *models.QueueOfPages, iterator *uint, wg *sync.WaitGroup) {
 			continue
 		}
 
-		isDomainBlacklisted, err := page.Domain.IsBlacklisted(database.DB)
+		isDomainBlacklisted, err := page.TopAndSecondLevelDomain.IsBlacklisted(database.DB)
 		if err != nil {
 			response.Body.Close()
 			log.Printf("[%s] determine domain blacklist status failed: %v", currentUrl, err)

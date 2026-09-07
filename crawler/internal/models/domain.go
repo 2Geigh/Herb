@@ -3,16 +3,43 @@ package models
 import (
 	"database/sql"
 	"fmt"
+	"strings"
 	"time"
 )
 
 type (
-	SecondAndTopLevelDomain string
+	Domain string
 )
 
-func (d SecondAndTopLevelDomain) HasBeenRequestedTooRecently(politeness_interval time.Duration, queue *QueueOfPages, db *sql.DB) (bool, error) {
+func (d Domain) GetSecondAndTopLevelDomain() Domain {
+	/*
+
+		>>> getDomain(https://www.youtube.com/watch?v=dQw4w9WgXcQ)
+		youtube.com
+
+	*/
+
+	domainWithoutProtocol := d.StripProtocol()
+
+	domainWithoutRoutes, _, _ := strings.Cut(string(domainWithoutProtocol), "/")
+
+	domainLevels := strings.Split(domainWithoutRoutes, ".")
+
+	topLevel := domainLevels[len(domainLevels)-1]
+
+	if len(topLevel) < 2 {
+		return Domain(topLevel)
+	}
+
+	secondLevel := domainLevels[len(domainLevels)-2]
+
+	return Domain(secondLevel + "." + topLevel)
+}
+
+func (d Domain) HasBeenRequestedTooRecently(politeness_interval time.Duration, queue *QueueOfPages, db *sql.DB) (bool, error) {
 	var (
-		lastCrawled time.Time
+		secondAndTopLevelDomain = d.GetSecondAndTopLevelDomain()
+		lastCrawled             time.Time
 
 		// better to be too
 		// polite than not nice enough
@@ -33,7 +60,7 @@ func (d SecondAndTopLevelDomain) HasBeenRequestedTooRecently(politeness_interval
 	}
 	defer stmt.Close()
 
-	err = stmt.QueryRow(d).Scan(&lastCrawled)
+	err = stmt.QueryRow(secondAndTopLevelDomain).Scan(&lastCrawled)
 	if err == sql.ErrNoRows {
 		hasBeenCrawledTooRecently = false
 	} else if err != nil {
@@ -47,14 +74,16 @@ func (d SecondAndTopLevelDomain) HasBeenRequestedTooRecently(politeness_interval
 	return hasBeenCrawledTooRecently, nil
 }
 
-func (d SecondAndTopLevelDomain) IsBlacklisted(db *sql.DB) (bool, error) {
+func (d Domain) IsBlacklisted(db *sql.DB) (bool, error) {
 	var (
+		secondAndTopLevelDomain = d.GetSecondAndTopLevelDomain()
+
 		exists bool
 	)
 
 	err := db.QueryRow(
 		`SELECT EXISTS (SELECT 1 FROM domain_blacklist WHERE domain = $1);`,
-		d,
+		secondAndTopLevelDomain,
 	).Scan(&exists)
 
 	if err != nil {
@@ -62,4 +91,15 @@ func (d SecondAndTopLevelDomain) IsBlacklisted(db *sql.DB) (bool, error) {
 	}
 
 	return exists, nil
+}
+
+func (d Domain) StripProtocol() Domain {
+
+	_, domainWithoutProtocol, includesProtocol := strings.Cut(string(d), "://")
+
+	if !includesProtocol {
+		return d
+	}
+
+	return Domain(domainWithoutProtocol)
 }
