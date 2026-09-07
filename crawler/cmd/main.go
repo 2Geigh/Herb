@@ -21,22 +21,32 @@ const (
 	CRAWLER_POLITENESS_INTERVAL time.Duration = 12 * time.Second
 	CRAWLER_OLDNESS_THRESHOLD   time.Duration = 86400 * time.Second // 7 days
 
-	NUMBER_OF_CRAWLERS = 100
+	NUMBER_OF_CRAWLERS = 5
 )
 
 var (
 	seed_urls = []models.Url{
-		// models.Url("https://nicholasgarcia.com").TrimTrailingSlash(),
+		models.Url("https://nicholasgarcia.com").TrimTrailingSlash(),
 		models.Url("https://angeldolly.com/").TrimTrailingSlash(),
 		models.Url("https://nyscyra.net/").TrimTrailingSlash(),
 		models.Url("https://0xffff.one").TrimTrailingSlash(),
 		models.Url("https://v2ex.com").TrimTrailingSlash(),
+		models.Url("https://asclaria.org/").TrimTrailingSlash(),
 		models.Url("https://skateboard.nekoweb.org/webring/phightring").TrimTrailingSlash(),
 		models.Url("https://bookscorpion.neocities.org/webrings").TrimTrailingSlash(),
 		models.Url("https://ryqrtz.nekoweb.org/webrings.html").TrimTrailingSlash(),
 		models.Url("https://webri.ng/").TrimTrailingSlash(),
 		models.Url("https://ryqrtz.nekoweb.org/home.html").TrimTrailingSlash(),
 		models.Url("https://mikh.net/affiliates.php").TrimTrailingSlash(),
+		models.Url("https://msx.gay/"),
+		models.Url("https://piclog.blue/index.php").TrimTrailingSlash(),
+		models.Url("https://silly.city/").TrimTrailingSlash(),
+		models.Url("https://gummyring.neocities.org/").TrimTrailingSlash(),
+		models.Url("https://list-me.com/links.php?cat=1").TrimTrailingSlash(),
+		models.Url("https://indieseek.xyz/").TrimTrailingSlash(),
+		models.Url("https://linklane.net/").TrimTrailingSlash(),
+		models.Url("https://smoothsailing.asclaria.org/").TrimTrailingSlash(),
+		models.Url("https://silly.city/").TrimTrailingSlash(),
 	}
 	pagesQueue = models.QueueOfPages{Links: []models.Url{}, Mu: sync.Mutex{}}
 )
@@ -53,17 +63,16 @@ func main() {
 	}
 	defer database.DB.Close()
 
-	for _, seed_url := range seed_urls {
-		wg.Add(1)
+	err = database.InitializeDomainBlacklist(database.DB)
+	if err != nil {
+		log.Fatalf("initialize domain blacklist failed: %v", err)
+	}
 
+	for _, seed_url := range seed_urls {
 		err := pagesQueue.Enqueue([]models.Url{seed_url}, database.DB)
 		if err != nil {
 			log.Printf("enqueue seed URLs failed: %v", err)
 		}
-
-		go crawl(&pagesQueue, &crawl_iterator, &wg)
-
-		time.Sleep(CRAWLER_POLITENESS_INTERVAL)
 	}
 
 	for range NUMBER_OF_CRAWLERS {
@@ -71,7 +80,7 @@ func main() {
 
 		go crawl(&pagesQueue, &crawl_iterator, &wg)
 
-		time.Sleep(CRAWLER_POLITENESS_INTERVAL)
+		time.Sleep(CRAWLER_POLITENESS_INTERVAL / NUMBER_OF_CRAWLERS)
 	}
 
 	wg.Wait()
@@ -143,9 +152,11 @@ func crawl(queue *models.QueueOfPages, iterator *uint, wg *sync.WaitGroup) {
 			log.Printf("[%s] read response body failed: %v", currentUrl, err)
 			continue
 		}
+
 		page.ResponseBody = string(body.asBytes)
 
 		if !utf8.Valid(body.asBytes) {
+			response.Body.Close()
 			log.Printf("[%s] invalid UTF-8", currentUrl)
 			continue
 		}
@@ -154,12 +165,14 @@ func crawl(queue *models.QueueOfPages, iterator *uint, wg *sync.WaitGroup) {
 			strings.NewReader(string(body.asBytes)),
 		)
 		if err != nil {
+			response.Body.Close()
 			log.Printf("[%s] parse HTML failed: %v", currentUrl, err)
 			continue
 		}
 
 		page.Text, err = parsePageBody(doc)
 		if err != nil {
+			response.Body.Close()
 			log.Printf("[%s] parse body content failed: %v", currentUrl, err)
 			continue
 		}
@@ -167,7 +180,18 @@ func crawl(queue *models.QueueOfPages, iterator *uint, wg *sync.WaitGroup) {
 		page.Outneighbours = findHyperlinks(doc, currentUrl)
 		err = queue.Enqueue(page.Outneighbours, database.DB)
 		if err != nil {
+			response.Body.Close()
 			log.Printf("[%s] enqueue failed: %v", currentUrl, err)
+			continue
+		}
+
+		isDomainBlacklisted, err := page.Domain.IsBlacklisted(database.DB)
+		if err != nil {
+			response.Body.Close()
+			log.Printf("[%s] determine domain blacklist status failed: %v", currentUrl, err)
+			continue
+		}
+		if isDomainBlacklisted {
 			continue
 		}
 
@@ -176,6 +200,7 @@ func crawl(queue *models.QueueOfPages, iterator *uint, wg *sync.WaitGroup) {
 
 		err = page.Save(database.DB)
 		if err != nil {
+			response.Body.Close()
 			log.Printf("[%s] save to database failed: %v", currentUrl, err)
 			continue
 		}
@@ -192,7 +217,6 @@ func crawl(queue *models.QueueOfPages, iterator *uint, wg *sync.WaitGroup) {
 		// log.Println("response_body: ", len(page.ResponseBody), "bytes long")
 		// log.Println("queue: ", len(queue.Links), "links long")
 
-		response.Body.Close()
 		*iterator += 1
 	}
 }

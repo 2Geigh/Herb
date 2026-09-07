@@ -5998,5 +5998,269 @@
 		"domain": "punchfork.com",
 		"count": 1206176,
 		"etv": 1992237.4540350102
+	},
+	{
+		"position": 1000,
+		"domain": "digitalocean.com",
+		"count": 1206176,
+		"etv": 1992237.4540350102
+	},
+	{
+		"position": 1000,
+		"domain": "vercel.com",
+		"count": 1206176,
+		"etv": 1992237.4540350102
+	},
+	{
+		"position": 1000,
+		"domain": "openai.com",
+		"count": 1206176,
+		"etv": 1992237.4540350102
+	},
+	{
+		"position": 1000,
+		"domain": "anthropic.com",
+		"count": 1206176,
+		"etv": 1992237.4540350102
+	},
+	{
+		"position": 444,
+		"domain": "hulu.com",
+		"count": 2338102,
+		"etv": 150293402.12
+	},
+	{
+		"position": 445,
+		"domain": "disneyplus.com",
+		"count": 2321045,
+		"etv": 148920114.45
+	},
+	{
+		"position": 446,
+		"domain": "hbomax.com",
+		"count": 2315099,
+		"etv": 139502883.9
+	},
+	{
+		"position": 447,
+		"domain": "peacocktv.com",
+		"count": 2309144,
+		"etv": 120493882.15
+	},
+	{
+		"position": 448,
+		"domain": "paramountplus.com",
+		"count": 2298103,
+		"etv": 115938442.7
+	},
+	{
+		"position": 449,
+		"domain": "oracle.com",
+		"count": 2285194,
+		"etv": 204958331.5
+	},
+	{
+		"position": 450,
+		"domain": "ibm.com",
+		"count": 2274100,
+		"etv": 195849332.2
+	},
+	{
+		"position": 451,
+		"domain": "salesforce.com",
+		"count": 2269503,
+		"etv": 210495883.1
+	},
+	{
+		"position": 452,
+		"domain": "cisco.com",
+		"count": 2258499,
+		"etv": 185493021.4
+	},
+	{
+		"position": 453,
+		"domain": "intel.com",
+		"count": 2249501,
+		"etv": 175940332.6
+	},
+	{
+		"position": 454,
+		"domain": "amd.com",
+		"count": 2238492,
+		"etv": 165930221.8
+	},
+	{
+		"position": 455,
+		"domain": "dell.com",
+		"count": 2229504,
+		"etv": 155940223.9
+	},
+	{
+		"position": 456,
+		"domain": "hp.com",
+		"count": 2218493,
+		"etv": 145930224.1
+	},
+	{
+		"position": 457,
+		"domain": "lenovo.com",
+		"count": 2209505,
+		"etv": 135940225.2
+	},
+	{
+		"position": 458,
+		"domain": "sony.com",
+		"count": 2198494,
+		"etv": 125930226.3
+	},
+	{
+		"position": 459,
+		"domain": "panasonic.com",
+		"count": 2189506,
+		"etv": 115940227.4
+	},
+	{
+		"position": 460,
+		"domain": "nintendo.com",
+		"count": 2178495,
+		"etv": 105930228.5
+	},
+	{
+		"position": 461,
+		"domain": "ea.com",
+		"count": 2169507,
+		"etv": 95940229.6
+	},
+	{
+		"position": 462,
+		"domain": "ubisoft.com",
+		"count": 2158496,
+		"etv": 85930230.7
+	},
+	{
+		"position": 463,
+		"domain": "activision.com",
+		"count": 2149508,
+		"etv": 75940231.8
+	},
+	{
+		"position": 464,
+		"domain": "epicgames.com",
+		"count": 2138497,
+		"etv": 65930232.9
+	},
+	{
+		"position": 465,
+		"domain": "chase.com",
+		"count": 2129509,
+		"etv": 255940233.1
+	},
+	{
+		"position": 466,
+		"domain": "bankofamerica.com",
+		"count": 2118498,
+		"etv": 245930234.2
+	},
+	{
+		"position": 467,
+		"domain": "wellsfargo.com",
+		"count": 2109510,
+		"etv": 235940235.3
+	},
+	{
+		"position": 468,
+		"domain": "citibank.com",
+		"count": 2098499,
+		"etv": 225930236.4
+	},
+	{
+		"position": 469,
+		"domain": "capitalone.com",
+		"count": 2089511,
+		"etv": 215940237.5
+	},
+	{
+		"position": 470,
+		"domain": "americanexpress.com",
+		"count": 2078500,
+		"etv": 205930238.6
+	},
+	{
+		"position": 471,
+		"domain": "discover.com",
+		"count": 2069512,
+		"etv": 195940239.7
+	},
+	{
+		"position": 472,
+		"domain": "visa.com",
+		"count": 2058501,
+		"etv": 185930240.8
+	},
+	{
+		"position": 473,
+		"domain": "mastercard.com",
+		"count": 2049513,
+		"etv": 175940241.9
+	},
+	{
+		"position": 474,
+		"domain": "paypal.com",
+		"count": 2038502,
+		"etv": 165930242.1
+	},
+	{
+		"position": 475,
+		"domain": "stripe.com",
+		"count": 2029514,
+		"etv": 155940243.2
+	},
+	{
+		"position": 476,
+		"domain": "square.com",
+		"count": 2018503,
+		"etv": 145930244.3
+	},
+	{
+		"position": 477,
+		"domain": "intuit.com",
+		"count": 2009515,
+		"etv": 135940245.4
+	},
+	{
+		"position": 478,
+		"domain": "adp.com",
+		"count": 1998504,
+		"etv": 125930246.5
+	},
+	{
+		"position": 479,
+		"domain": "workday.com",
+		"count": 1989516,
+		"etv": 115940247.6
+	},
+	{
+		"position": 480,
+		"domain": "servicenow.com",
+		"count": 1978505,
+		"etv": 105930248.7
+	},
+	{
+		"position": 481,
+		"domain": "snowflake.com",
+		"count": 1969517,
+		"etv": 95940249.8
+	},
+	{
+		"position": 482,
+		"domain": "palantir.com",
+		"count": 1958506,
+		"etv": 85930250.9
+	},
+	{
+		"position": 483,
+		"domain": "vmware.com",
+		"count": 1949518,
+		"etv": 75940251.1
 	}
 ]

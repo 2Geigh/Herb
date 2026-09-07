@@ -53,6 +53,7 @@ func (url Url) IsTooRecentlyCrawled(db *sql.DB, oldness_threshold time.Duration)
 	if err != nil {
 		return isTooRecentlyCrawled, fmt.Errorf("prepare stmt failed: %w", err)
 	}
+	defer stmt.Close()
 
 	err = stmt.QueryRow(url.TrimTrailingSlash()).Scan(&lastCrawled)
 	if err != nil && err != sql.ErrNoRows {

@@ -31,6 +31,7 @@ func (d SecondAndTopLevelDomain) HasBeenRequestedTooRecently(politeness_interval
 	if err != nil {
 		return hasBeenCrawledTooRecently, fmt.Errorf("prepare stmt failed: %w", err)
 	}
+	defer stmt.Close()
 
 	err = stmt.QueryRow(d).Scan(&lastCrawled)
 	if err == sql.ErrNoRows {
@@ -44,4 +45,21 @@ func (d SecondAndTopLevelDomain) HasBeenRequestedTooRecently(politeness_interval
 	}
 
 	return hasBeenCrawledTooRecently, nil
+}
+
+func (d SecondAndTopLevelDomain) IsBlacklisted(db *sql.DB) (bool, error) {
+	var (
+		exists bool
+	)
+
+	err := db.QueryRow(
+		`SELECT EXISTS (SELECT 1 FROM domain_blacklist WHERE domain = $1);`,
+		d,
+	).Scan(&exists)
+
+	if err != nil {
+		return false, fmt.Errorf("query failed: %w", err)
+	}
+
+	return exists, nil
 }
