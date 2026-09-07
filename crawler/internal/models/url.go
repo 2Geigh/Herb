@@ -12,6 +12,10 @@ type (
 )
 
 func (url Url) GetDomain() Domain {
+	var (
+		domain string = string(url)
+	)
+
 	/*
 
 		>>> getDomain(https://www.youtube.com/watch?v=dQw4w9WgXcQ)
@@ -19,19 +23,37 @@ func (url Url) GetDomain() Domain {
 
 	*/
 
-	linkComponents := strings.Split(string(url), "://")
-	// [0] == http:// || https://
-	// [1] == www.example.com/thingy
-
-	// protocol := linkComponents[0] + "://"
-	domainWithoutRoutes, _, _ := strings.Cut(linkComponents[1], "/")
-
-	_, domainWithoutWWW, containsWWW := strings.Cut(domainWithoutRoutes, "www.")
-	if containsWWW {
-		return Domain(domainWithoutWWW)
+	_, domainWithoutProtocol, containsProtocol := strings.Cut(string(url), "://")
+	if containsProtocol {
+		domain = domainWithoutProtocol
 	}
 
-	return Domain(domainWithoutRoutes)
+	_, domainWithoutWWW, containsWWW := strings.Cut(domain, "www.")
+	if containsWWW {
+		domain = domainWithoutWWW
+	}
+
+	domainWithoutRoutes, _, containsRoutes := strings.Cut(domain, "/")
+	if containsRoutes {
+		domain = domainWithoutRoutes
+	}
+
+	// We run this twice
+	// To handle ? and # appearing
+	// In whatever order
+	for range 2 {
+		domainWithoutQuery, _, containsQuery := strings.Cut(domain, "?")
+		if containsQuery {
+			domain = domainWithoutQuery
+		}
+
+		domainWithoutFragment, _, containsFragment := strings.Cut(domain, "#")
+		if containsFragment {
+			domain = domainWithoutFragment
+		}
+	}
+
+	return Domain(domain)
 }
 
 func (url Url) IsTooRecentlyCrawled(db *sql.DB, oldness_threshold time.Duration) (bool, error) {

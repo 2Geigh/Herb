@@ -72,6 +72,81 @@ func TestUrl_GetDomain(t *testing.T) {
 			url:  models.Url("https://shop.example.co.uk/products"),
 			want: models.Domain("shop.example.co.uk"),
 		},
+		{
+			name: "Routeless url with query",
+			url:  models.Url("https://support.github.com?tags=dotcom-footer"),
+			want: models.Domain("support.github.com"),
+		},
+		{
+			name: "URL without protocol",
+			url:  models.Url("www.example.com/path"),
+			want: models.Domain("example.com"),
+		},
+		{
+			name: "Domain without protocol or www",
+			url:  models.Url("example.com"),
+			want: models.Domain("example.com"),
+		},
+		{
+			name: "Routeless URL with a fragment",
+			url:  models.Url("https://github.com#readme"),
+			want: models.Domain("github.com"),
+		},
+		{
+			name: "Routeless URL with query before fragment",
+			url:  models.Url("https://example.com?foo=bar#section"),
+			want: models.Domain("example.com"),
+		},
+		{
+			name: "Routeless URL with fragment before query",
+			url:  models.Url("https://example.com#section?foo=bar"),
+			want: models.Domain("example.com"),
+		},
+		{
+			name: "WWW URL with a query and no path",
+			url:  models.Url("https://www.example.com?foo=bar"),
+			want: models.Domain("example.com"),
+		},
+		{
+			name: "WWW URL with a fragment and no path",
+			url:  models.Url("https://www.example.com#section"),
+			want: models.Domain("example.com"),
+		},
+		{
+			name: "WWW URL with query before fragment and no path",
+			url:  models.Url("https://www.example.com?foo=bar#section"),
+			want: models.Domain("example.com"),
+		},
+		{
+			name: "WWW URL with fragment before query and no path",
+			url:  models.Url("https://www.example.com#section?foo=bar"),
+			want: models.Domain("example.com"),
+		},
+		{
+			name: "HTTP URL with query and no path",
+			url:  models.Url("http://example.com?foo=bar"),
+			want: models.Domain("example.com"),
+		},
+		{
+			name: "HTTP URL with fragment and no path",
+			url:  models.Url("http://example.com#section"),
+			want: models.Domain("example.com"),
+		},
+		{
+			name: "URL with a port",
+			url:  models.Url("https://example.com:8080/path"),
+			want: models.Domain("example.com:8080"),
+		},
+		{
+			name: "WWW URL with a port",
+			url:  models.Url("https://www.example.com:8080/path"),
+			want: models.Domain("example.com:8080"),
+		},
+		{
+			name: "URL with a subdomain, query, and fragment",
+			url:  models.Url("https://api.example.com?foo=bar#section"),
+			want: models.Domain("api.example.com"),
+		},
 	}
 
 	for _, tt := range tests {
