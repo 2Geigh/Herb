@@ -77,6 +77,11 @@ func TestDomain_GetSecondAndTopLevelDomain(t *testing.T) {
 			input: models.Domain(""),
 			want:  models.Domain(""),
 		},
+		{
+			name:  "Single-level domain",
+			input: models.Domain("localhost"),
+			want:  models.Domain("localhost"),
+		},
 	}
 
 	for _, tt := range tests {
