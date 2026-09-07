@@ -10,7 +10,7 @@ type (
 	SecondAndTopLevelDomain string
 )
 
-func (d SecondAndTopLevelDomain) HasBeenRequestedTooRecently(politeness_interval time.Duration, db *sql.DB) (bool, error) {
+func (d SecondAndTopLevelDomain) HasBeenRequestedTooRecently(politeness_interval time.Duration, queue QueueOfPages, db *sql.DB) (bool, error) {
 	var (
 		lastCrawled time.Time
 
@@ -19,6 +19,9 @@ func (d SecondAndTopLevelDomain) HasBeenRequestedTooRecently(politeness_interval
 		// polite to websites
 		hasBeenCrawledTooRecently bool = true
 	)
+
+	queue.Mu.Lock()
+	defer queue.Mu.Unlock()
 
 	stmt, err := db.Prepare(
 		`SELECT date_last_crawled

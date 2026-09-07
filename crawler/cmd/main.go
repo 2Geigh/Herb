@@ -107,7 +107,7 @@ func crawl(queue *models.QueueOfPages, iterator *uint, wg *sync.WaitGroup) {
 		// WITHIN THE LAST CRAWLER_MINIMUM_OLDNESS_THRESHOLD (30 days):
 		// continue
 
-		hasBeenRequestedTooRecently, err := page.Domain.HasBeenRequestedTooRecently(CRAWLER_POLITENESS_INTERVAL, database.DB)
+		hasBeenRequestedTooRecently, err := page.Domain.HasBeenRequestedTooRecently(CRAWLER_POLITENESS_INTERVAL, pagesQueue, database.DB)
 		if err != nil {
 			log.Printf("[%s] determine necessary politeness failed: %v", currentUrl, err)
 			continue
@@ -182,13 +182,13 @@ func crawl(queue *models.QueueOfPages, iterator *uint, wg *sync.WaitGroup) {
 		log.Println()
 		log.Printf("[%s]", currentUrl)
 		// log.Println("crawler:       ", crawler_id)
-		log.Println("iter:          ", *iterator)
+		// log.Println("iter:          ", *iterator)
 		// log.Println("url:           ", currentUrl)
-		log.Println("title:         ", page.Title)
-		log.Println("desc:          ", page.Description)
+		// log.Println("title:         ", page.Title)
+		// log.Println("desc:          ", page.Description)
 		// log.Println("body:          ", len(page.Text), "bytes long")
-		log.Println("outneighbours: ", len(page.Outneighbours))
-		log.Println("response_body: ", len(page.ResponseBody), "bytes long")
+		// log.Println("outneighbours: ", len(page.Outneighbours))
+		// log.Println("response_body: ", len(page.ResponseBody), "bytes long")
 		// log.Println("queue: ", len(queue.Links), "links long")
 
 		response.Body.Close()
