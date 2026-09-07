@@ -23,6 +23,10 @@ func (url Url) GetDomain() Domain {
 
 	*/
 
+	if len(url) == 0 {
+		return Domain(url)
+	}
+
 	_, domainWithoutProtocol, containsProtocol := strings.Cut(string(url), "://")
 	if containsProtocol {
 		domain = domainWithoutProtocol
@@ -85,9 +89,7 @@ func (url Url) IsTooRecentlyCrawled(db *sql.DB, oldness_threshold time.Duration)
 }
 
 func (url Url) TrimTrailingSlash() Url {
-	if string(url[len(url)-1]) != "/" {
-		return url
-	}
-
-	return url[0 : len(url)-1]
+	return Url(
+		strings.TrimSuffix(string(url), "/"),
+	)
 }

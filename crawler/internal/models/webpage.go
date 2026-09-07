@@ -26,6 +26,14 @@ type (
 
 func (page *Webpage) Save(db *sql.DB) error {
 
+	if len(page.FullDomain) == 0 {
+		return fmt.Errorf("domain empty")
+	}
+
+	if len(page.Url) == 0 {
+		return fmt.Errorf("url empty")
+	}
+
 	tx, err := db.Begin()
 	if err != nil {
 		return fmt.Errorf("start tx failed: %w", err)

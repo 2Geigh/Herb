@@ -19,6 +19,10 @@ func (d Domain) GetSecondAndTopLevelDomain() Domain {
 
 	*/
 
+	if len(d) == 0 {
+		return d
+	}
+
 	domainWithoutProtocol := d.StripProtocol()
 
 	domainWithoutRoutes, _, _ := strings.Cut(string(domainWithoutProtocol), "/")
@@ -94,7 +98,6 @@ func (d Domain) IsBlacklisted(db *sql.DB) (bool, error) {
 }
 
 func (d Domain) StripProtocol() Domain {
-
 	_, domainWithoutProtocol, includesProtocol := strings.Cut(string(d), "://")
 
 	if !includesProtocol {

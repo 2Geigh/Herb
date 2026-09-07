@@ -50,6 +50,7 @@ var (
 		models.Url("https://runegod.net/").TrimTrailingSlash(),
 		models.Url("https://theotaku.com/").TrimTrailingSlash(),
 		models.Url("https://rollcake.site/").TrimTrailingSlash(),
+		models.Url("https://www.royal-drama.net/theemperorsnewgroove/").TrimTrailingSlash(),
 	}
 	pagesQueue = models.QueueOfPages{Links: []models.Url{}, Mu: sync.Mutex{}}
 )
@@ -91,8 +92,12 @@ func main() {
 
 func crawl(queue *models.QueueOfPages, iterator *uint, wg *sync.WaitGroup) {
 	var (
-		page       models.Webpage
+		page models.Webpage
+
+		// debugging
 		currentUrl models.Url = "void"
+		checkpoint string
+		err        error
 	)
 
 	defer wg.Done()
@@ -100,18 +105,23 @@ func crawl(queue *models.QueueOfPages, iterator *uint, wg *sync.WaitGroup) {
 	defer func(link models.Url) {
 		raisedError := recover()
 
-		log.Printf("[%s] PANICKED: %v", link, raisedError)
+		log.Printf(`[%s] PANICKED AFTER "%s": %v`, link, checkpoint, raisedError)
 	}(currentUrl)
 
 	for {
-		currentUrl, err := queue.Dequeue(database.DB)
+		currentUrl, err = queue.Dequeue(database.DB)
 		if err != nil {
 			continue
 		}
 
 		page.Url = currentUrl.TrimTrailingSlash()
+		checkpoint = "set page.Url"
+
 		page.FullDomain = page.Url.GetDomain()
+		checkpoint = "set page.FullDomain"
+
 		page.TopAndSecondLevelDomain = page.FullDomain.GetSecondAndTopLevelDomain()
+		checkpoint = "set page.TopAndSecondLevelDomain"
 
 		isPageTooRecentlyCrawled, err := page.Url.TrimTrailingSlash().IsTooRecentlyCrawled(database.DB, CRAWLER_OLDNESS_THRESHOLD)
 		if err != nil {
@@ -156,11 +166,15 @@ func crawl(queue *models.QueueOfPages, iterator *uint, wg *sync.WaitGroup) {
 			log.Printf("[%s] read response body failed: %v", currentUrl, err)
 			continue
 		}
+		err = response.Body.Close()
+		if err != nil {
+			panic(fmt.Errorf("close resposne body failed: %w", err))
+		}
 
 		page.ResponseBody = string(body.asBytes)
+		checkpoint = "set page.ResponseBody"
 
 		if !utf8.Valid(body.asBytes) {
-			response.Body.Close()
 			log.Printf("[%s] invalid UTF-8", currentUrl)
 			continue
 		}
@@ -169,14 +183,12 @@ func crawl(queue *models.QueueOfPages, iterator *uint, wg *sync.WaitGroup) {
 			strings.NewReader(string(body.asBytes)),
 		)
 		if err != nil {
-			response.Body.Close()
 			log.Printf("[%s] parse HTML failed: %v", currentUrl, err)
 			continue
 		}
 
 		page.Text, err = parsePageBody(doc)
 		if err != nil {
-			response.Body.Close()
 			log.Printf("[%s] parse body content failed: %v", currentUrl, err)
 			continue
 		}
@@ -184,14 +196,12 @@ func crawl(queue *models.QueueOfPages, iterator *uint, wg *sync.WaitGroup) {
 		page.Outneighbours = findHyperlinks(doc, currentUrl)
 		err = queue.Enqueue(page.Outneighbours, database.DB)
 		if err != nil {
-			response.Body.Close()
 			log.Printf("[%s] enqueue failed: %v", currentUrl, err)
 			continue
 		}
 
 		isDomainBlacklisted, err := page.TopAndSecondLevelDomain.IsBlacklisted(database.DB)
 		if err != nil {
-			response.Body.Close()
 			log.Printf("[%s] determine domain blacklist status failed: %v", currentUrl, err)
 			continue
 		}
@@ -200,11 +210,13 @@ func crawl(queue *models.QueueOfPages, iterator *uint, wg *sync.WaitGroup) {
 		}
 
 		page.Title = parsePageTitle(doc)
+		checkpoint = "set page.Title"
+
 		page.Description = parsePageDescription(doc)
+		checkpoint = "set page.Description"
 
 		err = page.Save(database.DB)
 		if err != nil {
-			response.Body.Close()
 			log.Printf("[%s] save to database failed: %v", currentUrl, err)
 			continue
 		}
