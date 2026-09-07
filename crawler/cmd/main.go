@@ -18,7 +18,7 @@ import (
 )
 
 const (
-	CRAWLER_POLITENESS_INTERVAL       time.Duration = 8 * time.Second
+	CRAWLER_POLITENESS_INTERVAL       time.Duration = 12 * time.Second
 	CRAWLER_MINIMUM_OLDNESS_THRESHOLD time.Duration = 2592000 * time.Second // 30 days
 )
 
@@ -107,7 +107,12 @@ func crawl(queue *models.QueueOfPages, iterator *uint, wg *sync.WaitGroup) {
 		// WITHIN THE LAST CRAWLER_MINIMUM_OLDNESS_THRESHOLD (30 days):
 		// continue
 
-		if page.Domain.HasBeenCrawledTooRecently(CRAWLER_POLITENESS_INTERVAL) {
+		hasBeenRequestedTooRecently, err := page.Domain.HasBeenRequestedTooRecently(CRAWLER_POLITENESS_INTERVAL, database.DB)
+		if err != nil {
+			log.Printf("[%s] determine necessary politeness failed: %v", currentUrl, err)
+			continue
+		}
+		if hasBeenRequestedTooRecently {
 			time.Sleep(CRAWLER_POLITENESS_INTERVAL)
 		}
 
