@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -45,7 +46,7 @@ func (d Domain) GetSecondAndTopLevelDomain() Domain {
 	return Domain(secondLevel + "." + topLevel)
 }
 
-func (d Domain) HasBeenRequestedTooRecently(politeness_interval time.Duration, queue *QueueOfPages, db *sql.DB) (bool, error) {
+func (d Domain) HasBeenRequestedTooRecently(politeness_interval time.Duration, databaseMu *sync.Mutex, db *sql.DB) (bool, error) {
 	var (
 		secondAndTopLevelDomain = d.GetSecondAndTopLevelDomain()
 		lastCrawled             time.Time
@@ -56,8 +57,8 @@ func (d Domain) HasBeenRequestedTooRecently(politeness_interval time.Duration, q
 		hasBeenCrawledTooRecently bool = true
 	)
 
-	queue.Mu.Lock()
-	defer queue.Mu.Unlock()
+	databaseMu.Lock()
+	defer databaseMu.Unlock()
 
 	stmt, err := db.Prepare(
 		`SELECT date_last_crawled

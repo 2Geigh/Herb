@@ -30,7 +30,7 @@ func (page *Webpage) Save(db *sql.DB) error {
 		return fmt.Errorf("domain empty")
 	}
 
-	if len(page.Url) == 0 {
+	if len(page.Url.TrimTrailingSlash()) == 0 {
 		return fmt.Errorf("url empty")
 	}
 
@@ -64,7 +64,7 @@ func (page *Webpage) Save(db *sql.DB) error {
 		`SELECT id 
 		FROM pages
 		WHERE link = $1;`,
-		page.Url,
+		page.Url.TrimTrailingSlash(),
 	).Scan(&pageId)
 	if err == sql.ErrNoRows {
 		isPageInDatabase = false
@@ -76,16 +76,23 @@ func (page *Webpage) Save(db *sql.DB) error {
 		stmt, err := tx.Prepare(
 			`INSERT INTO sites (
 				second_and_top_level_domain,
-				full_domain
+				full_domain,
+				date_discovered,
+				date_last_crawled
 			)
-			VALUES ($1, $2)
+			VALUES ($1, $2, $3, $4)
 			RETURNING id;`,
 		)
 		if err != nil {
 			return fmt.Errorf("prepare INSERT site stmt failed: %w", err)
 		}
 
-		err = stmt.QueryRow(page.TopAndSecondLevelDomain, page.FullDomain).Scan(&siteId)
+		err = stmt.QueryRow(
+			page.TopAndSecondLevelDomain,
+			page.FullDomain,
+			time.Now(),
+			time.Now(),
+		).Scan(&siteId)
 		if err != nil {
 			return fmt.Errorf("execute INSERT site stmt failed: %w", err)
 		}
@@ -108,9 +115,11 @@ func (page *Webpage) Save(db *sql.DB) error {
 				description,
 				link,
 				body_text,
-				response_body
+				response_body,
+				date_discovered,
+				date_last_crawled
 			)
-			VALUES ($1, $2, $3, $4, $5, $6);`,
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8);`,
 		)
 		if err != nil {
 			return fmt.Errorf("prepare INSERT page stmt failed: %w", err)
@@ -123,6 +132,8 @@ func (page *Webpage) Save(db *sql.DB) error {
 			page.Url.TrimTrailingSlash(),
 			page.Text,
 			page.ResponseBody,
+			time.Now(),
+			time.Now(),
 		)
 		if err != nil {
 			return fmt.Errorf("execute INSERT page stmt failed: %w", err)

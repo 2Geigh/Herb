@@ -19,3 +19,11 @@ func PrintHtmlNodeInfo(node *html.Node) {
 	// fmt.Println("node.PrevSibling", node.PrevSibling)
 	fmt.Println("node.Type", node.Type)
 }
+
+func LogPageInfo() {
+
+}
+
+func LogPageError() {
+
+}

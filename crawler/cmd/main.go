@@ -5,6 +5,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"runtime/debug"
 	"slices"
 	"strings"
 	"sync"
@@ -21,7 +22,7 @@ const (
 	CRAWLER_POLITENESS_INTERVAL time.Duration = 12 * time.Second
 	CRAWLER_OLDNESS_THRESHOLD   time.Duration = 86400 * time.Second // 7 days
 
-	NUMBER_OF_CRAWLERS = 1
+	NUMBER_OF_CRAWLERS = 50
 )
 
 var (
@@ -53,14 +54,18 @@ var (
 		models.Url("https://www.royal-drama.net/theemperorsnewgroove/").TrimTrailingSlash(),
 		models.Url("https://indieweb.org/").TrimTrailingSlash(),
 		models.Url("https://gusbus.space/smallweb-subway/").TrimTrailingSlash(),
+		models.Url("https://nownownow.com/").TrimTrailingSlash(),
+		models.Url("https://sike.pona.la/").TrimTrailingSlash(),
+		models.Url("https://webring.bucketfish.me/").TrimTrailingSlash(),
 	}
-	pagesQueue = models.QueueOfPages{Links: []models.Url{}, Mu: sync.Mutex{}}
 )
 
 func main() {
 	var (
 		crawl_iterator uint = 0
 		wg             sync.WaitGroup
+
+		startCrawler func()
 	)
 
 	err := database.InitializeDB()
@@ -75,26 +80,36 @@ func main() {
 	}
 
 	for _, seed_url := range seed_urls {
-		err := pagesQueue.Enqueue([]models.Url{seed_url}, database.DB)
+		err := database.EnqueueLinks([]models.Url{seed_url}, database.DB, &database.DatabaseMu)
 		if err != nil {
 			log.Printf("enqueue seed URLs failed: %v", err)
 		}
 	}
 
-	for range NUMBER_OF_CRAWLERS {
+	startCrawler = func() {
 		wg.Add(1)
 
-		go crawl(&pagesQueue, &crawl_iterator, &wg)
+		go func() {
+			crawl_iterator += 1
+			crawl(&crawl_iterator, &wg)
 
-		time.Sleep(CRAWLER_POLITENESS_INTERVAL / NUMBER_OF_CRAWLERS)
+			// Crawler replaces itself when it returns
+			startCrawler()
+		}()
+	}
+
+	for range NUMBER_OF_CRAWLERS {
+		startCrawler()
 	}
 
 	wg.Wait()
 }
 
-func crawl(queue *models.QueueOfPages, iterator *uint, wg *sync.WaitGroup) {
+func crawl(iterator *uint, wg *sync.WaitGroup) {
 	var (
 		page models.Webpage
+
+		localQueue models.LocalQueue
 
 		// debugging
 		currentUrl models.Url = "void"
@@ -107,25 +122,40 @@ func crawl(queue *models.QueueOfPages, iterator *uint, wg *sync.WaitGroup) {
 	defer func() {
 		raisedError := recover()
 
-		log.Printf(`[%s] PANICKED AFTER "%s": %v`, currentUrl, checkpoint, raisedError)
+		if raisedError != nil {
+			log.Printf("[%s] PANICKED AFTER %q\npanic: %v\nstack trace:\n%s",
+				currentUrl,
+				checkpoint,
+				raisedError,
+				debug.Stack())
+		}
 	}()
 
-	for {
-		currentUrl, err = queue.Dequeue(database.DB)
-		if err != nil {
-			continue
-		}
+	localQueue.Links, err = database.DequeueLinks(database.DB, &database.DatabaseMu)
+	if err != nil {
+		log.Printf("dequeue from database's global queue failed: %v", err)
+		return
+	}
 
-		page.Url = currentUrl.TrimTrailingSlash()
+	for len(localQueue.Links) > 0 {
+		currentUrl = localQueue.Dequeue()
+
+		page.
+			Url = currentUrl.TrimTrailingSlash()
 		checkpoint = "set page.Url"
 
-		page.FullDomain = page.Url.GetDomain()
+		page.
+			FullDomain = page.Url.GetDomain()
 		checkpoint = "set page.FullDomain"
 
-		page.TopAndSecondLevelDomain = page.FullDomain.GetSecondAndTopLevelDomain()
+		page.
+			TopAndSecondLevelDomain = page.FullDomain.GetSecondAndTopLevelDomain()
 		checkpoint = "set page.TopAndSecondLevelDomain"
 
-		isPageTooRecentlyCrawled, err := page.Url.TrimTrailingSlash().IsTooRecentlyCrawled(database.DB, CRAWLER_OLDNESS_THRESHOLD)
+		var (
+			isPageTooRecentlyCrawled bool
+		)
+		isPageTooRecentlyCrawled, err = page.Url.IsTooRecentlyCrawled(database.DB, CRAWLER_OLDNESS_THRESHOLD)
 		if err != nil {
 			log.Printf("[%s] determine page freshness failed: %v", currentUrl, err)
 			continue
@@ -134,7 +164,12 @@ func crawl(queue *models.QueueOfPages, iterator *uint, wg *sync.WaitGroup) {
 			continue
 		}
 
-		hasDomainBeenRequestedTooRecently, err := page.TopAndSecondLevelDomain.HasBeenRequestedTooRecently(CRAWLER_POLITENESS_INTERVAL, &pagesQueue, database.DB)
+		hasDomainBeenRequestedTooRecently, err := page.
+			TopAndSecondLevelDomain.
+			HasBeenRequestedTooRecently(
+				CRAWLER_POLITENESS_INTERVAL,
+				&database.DatabaseMu,
+				database.DB)
 		if err != nil {
 			log.Printf("[%s] determine necessary politeness failed: %v", currentUrl, err)
 			continue
@@ -196,7 +231,7 @@ func crawl(queue *models.QueueOfPages, iterator *uint, wg *sync.WaitGroup) {
 		}
 
 		page.Outneighbours = findHyperlinks(doc, currentUrl)
-		err = queue.Enqueue(page.Outneighbours, database.DB)
+		err = database.EnqueueLinks(page.Outneighbours, database.DB, &database.DatabaseMu)
 		if err != nil {
 			log.Printf("[%s] enqueue failed: %v", currentUrl, err)
 			continue
@@ -224,7 +259,7 @@ func crawl(queue *models.QueueOfPages, iterator *uint, wg *sync.WaitGroup) {
 		}
 
 		// log.Println()
-		log.Printf("[%s]", currentUrl)
+		log.Printf("( %d ) [%s]", *iterator, currentUrl)
 		// log.Println("crawler:       ", crawler_id)
 		// log.Println("iter:          ", *iterator)
 		// log.Println("url:           ", currentUrl)
@@ -234,8 +269,6 @@ func crawl(queue *models.QueueOfPages, iterator *uint, wg *sync.WaitGroup) {
 		// log.Println("outneighbours: ", len(page.Outneighbours))
 		// log.Println("response_body: ", len(page.ResponseBody), "bytes long")
 		// log.Println("queue: ", len(queue.Links), "links long")
-
-		*iterator += 1
 	}
 }
 

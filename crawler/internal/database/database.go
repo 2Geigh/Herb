@@ -7,7 +7,9 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"sync"
 
+	"github.com/2Geigh/Herb/crawler/internal/models"
 	_ "github.com/lib/pq"
 	"github.com/pressly/goose/v3"
 )
@@ -24,12 +26,137 @@ type (
 var (
 	DB *sql.DB = nil
 
+	DatabaseMu sync.Mutex
+
 	//go:embed migrations/*.sql
 	embedMigrations embed.FS
 
 	//go:embed data/*.json
 	embedData embed.FS
 )
+
+func DequeueLinks(db *sql.DB, mu *sync.Mutex) ([]models.Url, error) {
+	var (
+		queueRows []models.Url
+	)
+
+	mu.Lock()
+	defer mu.Unlock()
+
+	tx, err := db.Begin()
+	if err != nil {
+		return queueRows, fmt.Errorf("begin transaction failed: %w", err)
+	}
+	defer tx.Rollback()
+
+	// Get the first contiguous set of links with the same domain
+	// Ex: If the first five rows of the queue
+	//	   are all from google.com, return the
+	//     first five rows.
+	//
+	//	   Otherwise, just return the first row.
+
+	rows, err := tx.Query(
+		`WITH first_value AS (
+			SELECT second_and_top_level_domain AS value
+			FROM link_queue
+			ORDER BY id
+			LIMIT 1
+		),
+
+		rows_to_dequeue AS MATERIALIZED (
+			SELECT t.id
+			FROM link_queue AS t
+			CROSS JOIN first_value AS f
+			WHERE t.second_and_top_level_domain IS NOT DISTINCT FROM f.value
+			ORDER BY t.id
+			LIMIT 1000
+		),
+
+		deleted AS (
+			DELETE FROM link_queue AS t
+			USING rows_to_dequeue AS d
+			WHERE t.id = d.id
+			RETURNING t.id, t.hyperlink
+		)
+			
+		SELECT hyperlink
+		FROM deleted
+		ORDER BY id;`,
+	)
+	if err != nil {
+		return queueRows, fmt.Errorf("tx query failed: %w", err)
+	}
+
+	for rows.Next() {
+		var (
+			hyperlink models.Url
+		)
+
+		err = rows.Scan(&hyperlink)
+		if err != nil {
+			return queueRows, fmt.Errorf("scan row to local variable failed: %w", err)
+		}
+
+		queueRows = append(queueRows, hyperlink)
+	}
+
+	err = rows.Close()
+	if err != nil {
+		return queueRows, fmt.Errorf("close rows failed: %w", err)
+	}
+
+	err = rows.Err()
+	if err != nil {
+		return queueRows, fmt.Errorf("rows: %w", err)
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		return queueRows, fmt.Errorf("commit transaction failed: %w", err)
+	}
+
+	return queueRows, nil
+}
+
+func EnqueueLinks(urls []models.Url, db *sql.DB, mu *sync.Mutex) error {
+	mu.Lock()
+	defer mu.Unlock()
+
+	tx, err := db.Begin()
+	if err != nil {
+		return fmt.Errorf("begin transaction failed: %w", err)
+	}
+	defer tx.Rollback()
+
+	for _, url := range urls {
+		stmt, err := tx.Prepare(
+			`INSERT INTO link_queue (
+				hyperlink, second_and_top_level_domain
+			) VALUES ($1, $2);`,
+		)
+		if err != nil {
+			return fmt.Errorf("prepare statement failed: %w", err)
+		}
+
+		_, err = stmt.Exec(url, url.GetDomain().GetSecondAndTopLevelDomain())
+		if err != nil {
+			return fmt.Errorf("execute statement failed: %w", err)
+		}
+
+		err = stmt.Close()
+		if err != nil {
+			return fmt.Errorf("close statement failed: %w", err)
+		}
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		return fmt.Errorf("commit transaction failed: %w", err)
+	}
+
+	return nil
+}
 
 func InitializeDomainBlacklist(db *sql.DB) error {
 	var (

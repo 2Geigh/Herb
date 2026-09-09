@@ -7,55 +7,30 @@ import (
 )
 
 type (
-	QueueOfPages struct {
+	LocalQueue struct {
 		Mu    sync.Mutex
 		Links []Url
 	}
 )
 
-func (q *QueueOfPages) Dequeue(db *sql.DB) (Url, error) {
-	var (
-		queueRow struct {
-			url Url
-			id  int64
-		}
-	)
+func (q *LocalQueue) Dequeue() Url {
 
-	q.Mu.Lock()
-	defer q.Mu.Unlock()
-
-	tx, err := db.Begin()
-	if err != nil {
-		return queueRow.url, fmt.Errorf("begin transaction failed: %w", err)
-	}
-	defer tx.Rollback()
-
-	row := tx.QueryRow(
-		`SELECT id, hyperlink 
-		FROM link_queue 
-		LIMIT 1;`,
-	)
-	err = row.Scan(&queueRow.id, &queueRow.url)
-	if err == sql.ErrNoRows {
-		return queueRow.url, fmt.Errorf("queue empty")
-	} else if err != nil {
-		return queueRow.url, fmt.Errorf("SELECT query failed: %w", err)
+	if len(q.Links) == 0 {
+		return Url("")
 	}
 
-	_, err = tx.Exec(`DELETE FROM link_queue WHERE id = $1;`, queueRow.id)
-	if err != nil {
-		return queueRow.url, fmt.Errorf("DELETE query failed: %w", err)
+	toReturn := q.Links[0]
+
+	if len(q.Links) == 1 {
+		q.Links = []Url{}
+	} else {
+		q.Links = q.Links[1:]
 	}
 
-	err = tx.Commit()
-	if err != nil {
-		return queueRow.url, fmt.Errorf("commit transaction failed: %w", err)
-	}
-
-	return queueRow.url, nil
+	return toReturn
 }
 
-func (q *QueueOfPages) Enqueue(urls []Url, db *sql.DB) error {
+func (q *LocalQueue) Enqueue(urls []Url, db *sql.DB) error {
 	q.Mu.Lock()
 	defer q.Mu.Unlock()
 
