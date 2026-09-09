@@ -62,8 +62,7 @@ var (
 
 func main() {
 	var (
-		crawl_iterator uint = 0
-		wg             sync.WaitGroup
+		wg sync.WaitGroup
 
 		startCrawler func()
 	)
@@ -90,8 +89,7 @@ func main() {
 		wg.Add(1)
 
 		go func() {
-			crawl_iterator += 1
-			crawl(&crawl_iterator, &wg)
+			crawl(&wg)
 
 			// Crawler replaces itself when it returns
 			startCrawler()
@@ -105,7 +103,7 @@ func main() {
 	wg.Wait()
 }
 
-func crawl(iterator *uint, wg *sync.WaitGroup) {
+func crawl(wg *sync.WaitGroup) {
 	var (
 		page models.Webpage
 
@@ -259,7 +257,7 @@ func crawl(iterator *uint, wg *sync.WaitGroup) {
 		}
 
 		// log.Println()
-		log.Printf("( %d ) [%s]", *iterator, currentUrl)
+		log.Printf("[%s]", currentUrl)
 		// log.Println("crawler:       ", crawler_id)
 		// log.Println("iter:          ", *iterator)
 		// log.Println("url:           ", currentUrl)
