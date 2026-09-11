@@ -57,6 +57,8 @@ var (
 		models.Url("https://nownownow.com/").TrimTrailingSlash(),
 		models.Url("https://sike.pona.la/").TrimTrailingSlash(),
 		models.Url("https://webring.bucketfish.me/").TrimTrailingSlash(),
+		models.Url("https://links.weirdnet.org/").TrimTrailingSlash(),
+		models.Url("https://web1.0hosting.net/"),
 	}
 )
 
