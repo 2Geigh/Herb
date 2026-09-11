@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"time"
+
+	"github.com/lib/pq"
 )
 
 type (
@@ -117,9 +119,10 @@ func (page *Webpage) Save(db *sql.DB) error {
 				body_text,
 				response_body,
 				date_discovered,
-				date_last_crawled
+				date_last_crawled,
+				outlinks
 			)
-			VALUES ($1, $2, $3, $4, $5, $6, $7, $8);`,
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9);`,
 		)
 		if err != nil {
 			return fmt.Errorf("prepare INSERT page stmt failed: %w", err)
@@ -134,6 +137,7 @@ func (page *Webpage) Save(db *sql.DB) error {
 			page.ResponseBody,
 			time.Now(),
 			time.Now(),
+			pq.Array(page.Outneighbours),
 		)
 		if err != nil {
 			return fmt.Errorf("execute INSERT page stmt failed: %w", err)
@@ -141,9 +145,11 @@ func (page *Webpage) Save(db *sql.DB) error {
 	} else {
 		_, err = tx.Exec(
 			`UPDATE pages
-			SET date_last_crawled = $1
-			WHERE id = $2;`,
-			time.Now(), pageId)
+			SET 
+				date_last_crawled = $1,
+				outlinks = $2
+			WHERE id = $3;`,
+			time.Now(), pq.Array(page.Outneighbours), pageId)
 		if err != nil {
 			return fmt.Errorf("update page date_last_crawled failed: %w", err)
 		}
