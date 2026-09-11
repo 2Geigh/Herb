@@ -33,14 +33,18 @@ services:
                 condition: service_healthy
         env_file:
             - ./.env
-        ports:
-            - "3021:3001"
+        # ports:
+        #     - "3021:3001"
 
     client:
-        image: amazoncorretto:26-alpine # OpenJDK distribution maintained by AWS
+        build:
+            context: ./client
+            dockerfile: ./dockerfile
         depends_on:
             db:
                 condition: service_healthy
+        ports:
+            - "3022:3000"
 
 volumes:
     db-data:
