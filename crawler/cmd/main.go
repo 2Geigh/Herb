@@ -22,7 +22,7 @@ const (
 	CRAWLER_POLITENESS_INTERVAL time.Duration = 12 * time.Second
 	CRAWLER_OLDNESS_THRESHOLD   time.Duration = 86400 * time.Second // 7 days
 
-	NUMBER_OF_CRAWLERS = 5
+	NUMBER_OF_CRAWLERS = 50
 )
 
 var (
@@ -235,13 +235,12 @@ func crawl(wg *sync.WaitGroup) {
 		// Postgres will read it as an empty array
 		// Instead of as a NULL value
 		page.Outneighbours = make([]models.Url, 0)
-		hyperlinks := findHyperlinks(doc, currentUrl)
+		page.Outneighbours = append(page.Outneighbours, findHyperlinks(doc, currentUrl)...)
 		err = database.EnqueueLinks(page.Outneighbours, database.DB, &database.DatabaseMu)
 		if err != nil {
 			log.Printf("[%s] enqueue failed: %v", currentUrl, err)
 			continue
 		}
-		page.Outneighbours = append(page.Outneighbours, hyperlinks...)
 
 		isDomainBlacklisted, err := page.TopAndSecondLevelDomain.IsBlacklisted(database.DB)
 		if err != nil {
