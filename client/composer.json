@@ -1,0 +1,10 @@
+{
+	"name": "2geigh/herb-client",
+	"description": "The client for the indie web's search engine (codenamed 'Herb').",
+	"autoload": {
+		"psr-4": {
+			"2geigh\\HerbClient\\": "src/"
+		}
+	},
+	"require": {}
+}
