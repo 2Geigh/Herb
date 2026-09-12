@@ -133,7 +133,8 @@ func EnqueueLinks(urls []models.Url, db *sql.DB, mu *sync.Mutex) error {
 		stmt, err := tx.Prepare(
 			`INSERT INTO link_queue (
 				hyperlink, second_and_top_level_domain
-			) VALUES ($1, $2);`,
+			) VALUES ($1, $2)
+			ON CONFLICT (hyperlink) DO NOTHING;`,
 		)
 		if err != nil {
 			return fmt.Errorf("prepare statement failed: %w", err)
