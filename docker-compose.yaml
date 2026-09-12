@@ -36,6 +36,19 @@ services:
         # ports:
         #     - "3021:3001"
 
+    indexer:
+        build:
+            context: ./indexer
+            dockerfile: ./dockerfile
+        container_name: herb-indexer
+        depends_on:
+            db:
+                condition: service_healthy
+        env_file:
+            - ./.env
+        ports:
+            - "3021:3000"
+
     client:
         build:
             context: ./client
