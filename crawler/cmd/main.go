@@ -22,7 +22,7 @@ const (
 	CRAWLER_POLITENESS_INTERVAL time.Duration = 12 * time.Second
 	CRAWLER_OLDNESS_THRESHOLD   time.Duration = 86400 * time.Second // 7 days
 
-	NUMBER_OF_CRAWLERS = 50
+	NUMBER_OF_CRAWLERS = 25
 )
 
 var (
@@ -58,7 +58,9 @@ var (
 		models.Url("https://sike.pona.la/").TrimTrailingSlash(),
 		models.Url("https://webring.bucketfish.me/").TrimTrailingSlash(),
 		models.Url("https://links.weirdnet.org/").TrimTrailingSlash(),
-		models.Url("https://web1.0hosting.net/"),
+		models.Url("https://web1.0hosting.net/").TrimTrailingSlash(),
+		models.Url("https://bearblog.dev/").TrimTrailingSlash(),
+		models.Url("https://webring.xxiivv.com/").TrimTrailingSlash(),
 	}
 )
 
