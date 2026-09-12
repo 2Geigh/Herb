@@ -49,6 +49,15 @@ services:
         ports:
             - "3021:3000"
 
+    query_engine:
+        image: amazoncorretto:26-alpine # OpenJDK distribution maintained by AWS
+        container_name: herb-query_engine
+        depends_on:
+            db:
+                condition: service_healthy
+        ports:
+            - "3022:3000"
+
     client:
         build:
             context: ./client
@@ -57,7 +66,7 @@ services:
             db:
                 condition: service_healthy
         ports:
-            - "3022:3000"
+            - "3023:3000"
 
 volumes:
     db-data:
