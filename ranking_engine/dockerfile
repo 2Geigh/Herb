@@ -1,0 +1,14 @@
+FROM amazoncorretto:26-alpine AS build
+# OpenJDK distribution maintained by AWS
+
+WORKDIR /app
+
+COPY . .
+
+RUN javac ./src/main.java
+
+FROM build AS dist
+
+COPY --from=build /app/src/RankingEngine.class /bin/RankingEngine.class
+
+CMD ["java", "/bin/RankingEngine.class"]

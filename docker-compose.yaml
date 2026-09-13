@@ -47,7 +47,7 @@ services:
         env_file:
             - ./.env
         ports:
-            - "3021:3000"
+            - "3021:3001"
 
     query_engine:
         build:
@@ -57,8 +57,19 @@ services:
         depends_on:
             db:
                 condition: service_healthy
-        ports:
-            - "3022:3000"
+    #     ports:
+    #         - "3023:3003"
+
+    ranking_engine:
+        build:
+            context: ./ranking_engine
+            dockerfile: ./dockerfile
+        container_name: herb-ranking_engine
+        depends_on:
+            db:
+                condition: service_healthy
+        # ports:
+        #     - "3022:3002"
 
     client:
         build:
@@ -68,7 +79,7 @@ services:
             db:
                 condition: service_healthy
         ports:
-            - "3023:3000"
+            - "3023:3003"
 
 volumes:
     db-data:
