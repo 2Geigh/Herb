@@ -6265,5 +6265,10 @@
 	},
 	{ "position": 9999, "domain": "github.community" },
 	{ "position": 9999, "domain": "web.dev" },
-	{ "position": 9999, "domain": "fitbit.com" }
+	{ "position": 9999, "domain": "fitbit.com" },
+	{ "domain": "discord.com" },
+	{ "domain": "discord.gg" },
+	{ "domain": "twitter.com" },
+	{ "domain": "t.co" },
+	{ "domain": "fb.com" }
 ]
