@@ -1,5 +1,4 @@
 name: "Herb"
-version: "0.2.2"
 
 networks:
     # for creating & maintianing
