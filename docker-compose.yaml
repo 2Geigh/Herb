@@ -1,14 +1,27 @@
 name: "Herb"
+version: "0.2.1"
+
+networks:
+    # for creating & maintianing
+    # the searchable web database
+    infrastructure:
+
+    # for handling the evaluation of,
+    # and response to, user search queries
+    userspace:
 
 services:
     db:
+        networks:
+            - infrastructure
+            - userspace
         image: postgres:18.4-alpine
         container_name: herb-db
         environment:
             PGUSER: ${DB_USERNAME}
             POSTGRES_PASSWORD: ${DB_PASSWORD}
             POSTGRES_DB: ${DB_NAME}
-            POSTGRES_PORT:
+            POSTGRES_PORT: ${DB_CONTAINER_PORT}
         volumes:
             - db-data:/var/lib/herb
         healthcheck:
@@ -24,6 +37,8 @@ services:
     #     container_name: herb-db-backup
 
     crawler:
+        networks:
+            - infrastructure
         build:
             context: ./crawler
             dockerfile: ./build/dockerfile
@@ -33,10 +48,10 @@ services:
                 condition: service_healthy
         env_file:
             - ./.env
-        # ports:
-        #     - "3021:3001"
 
     indexer:
+        networks:
+            - infrastructure
         build:
             context: ./indexer
             dockerfile: ./dockerfile
@@ -50,6 +65,8 @@ services:
             - "3021:3001"
 
     query_engine:
+        networks:
+            - "userspace"
         build:
             context: ./query_engine
             dockerfile: ./dockerfile
@@ -61,6 +78,8 @@ services:
     #         - "3023:3003"
 
     ranking_engine:
+        networks:
+            - infrastructure
         build:
             context: ./ranking_engine
             dockerfile: ./dockerfile
@@ -72,9 +91,12 @@ services:
         #     - "3022:3002"
 
     client:
+        networks:
+            - userspace
         build:
             context: ./client
             dockerfile: ./dockerfile
+        container_name: herb-client
         depends_on:
             db:
                 condition: service_healthy

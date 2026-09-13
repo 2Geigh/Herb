@@ -62,6 +62,8 @@ var (
 		models.Url("https://bearblog.dev/").TrimTrailingSlash(),
 		models.Url("https://webring.xxiivv.com/").TrimTrailingSlash(),
 		models.Url("https://lwn.net/").TrimTrailingSlash(),
+		models.Url("https://fediring.net/").TrimTrailingSlash(),
+		models.Url("https://weirdweboctober.website/").TrimTrailingSlash(),
 	}
 )
 

@@ -6271,5 +6271,7 @@
 	{ "domain": "twitter.com" },
 	{ "domain": "t.co" },
 	{ "domain": "fb.com" },
-	{ "domain": "labs.google" }
+	{ "domain": "labs.google" },
+	{ "domain": "roblox.com" },
+	{ "domain": "coinbase.com" }
 ]
