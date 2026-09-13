@@ -25,6 +25,14 @@ Implemented with [Postgresql](https://postgresql.org).
 
 Implemented in [Python](https://python.org).
 
+### Ranking Engine
+
+Implemented in [Java](https://java.com).
+
+### Query Engine
+
+Implemented in [Rust](https://rust-lang.dev)
+
 ### Client
 
-Implemented in [Java](https://java.com) using the [Spring](https://spring.io) framework.
+Implemented in [PHP](https://php.net)
