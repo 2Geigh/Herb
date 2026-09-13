@@ -6270,5 +6270,6 @@
 	{ "domain": "discord.gg" },
 	{ "domain": "twitter.com" },
 	{ "domain": "t.co" },
-	{ "domain": "fb.com" }
+	{ "domain": "fb.com" },
+	{ "domain": "labs.google" }
 ]

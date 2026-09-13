@@ -130,6 +130,19 @@ func EnqueueLinks(urls []models.Url, db *sql.DB, mu *sync.Mutex) error {
 	defer tx.Rollback()
 
 	for _, url := range urls {
+		var (
+			isBlacklisted bool
+		)
+
+		isBlacklisted, err = url.GetDomain().IsBlacklisted(db)
+		if err != nil {
+			return fmt.Errorf("determine url blacklist status failed: %w", err)
+		}
+
+		if isBlacklisted {
+			continue
+		}
+
 		stmt, err := tx.Prepare(
 			`INSERT INTO link_queue (
 				hyperlink, second_and_top_level_domain
