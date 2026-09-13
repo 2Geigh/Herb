@@ -31,8 +31,8 @@ Implemented in [Java](https://java.com).
 
 ### Query Engine
 
-Implemented in [Rust](https://rust-lang.dev)
+Implemented in [Rust](https://rust-lang.dev).
 
 ### Client
 
-Implemented in [PHP](https://php.net)
+Implemented in [PHP](https://php.net).

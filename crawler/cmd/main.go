@@ -61,6 +61,7 @@ var (
 		models.Url("https://web1.0hosting.net/").TrimTrailingSlash(),
 		models.Url("https://bearblog.dev/").TrimTrailingSlash(),
 		models.Url("https://webring.xxiivv.com/").TrimTrailingSlash(),
+		models.Url("https://lwn.net/").TrimTrailingSlash(),
 	}
 )
 
@@ -155,6 +156,18 @@ func crawl(wg *sync.WaitGroup) {
 		checkpoint = "set page.TopAndSecondLevelDomain"
 
 		var (
+			isDomainBlacklisted bool
+		)
+		isDomainBlacklisted, err = page.TopAndSecondLevelDomain.IsBlacklisted(database.DB)
+		if err != nil {
+			log.Printf("[%s] determine domain blacklist status failed: %v", currentUrl, err)
+			continue
+		}
+		if isDomainBlacklisted {
+			continue
+		}
+
+		var (
 			isPageTooRecentlyCrawled bool
 		)
 		isPageTooRecentlyCrawled, err = page.Url.IsTooRecentlyCrawled(database.DB, CRAWLER_OLDNESS_THRESHOLD)
@@ -241,15 +254,6 @@ func crawl(wg *sync.WaitGroup) {
 		err = database.EnqueueLinks(page.Outneighbours, database.DB, &database.DatabaseMu)
 		if err != nil {
 			log.Printf("[%s] enqueue failed: %v", currentUrl, err)
-			continue
-		}
-
-		isDomainBlacklisted, err := page.TopAndSecondLevelDomain.IsBlacklisted(database.DB)
-		if err != nil {
-			log.Printf("[%s] determine domain blacklist status failed: %v", currentUrl, err)
-			continue
-		}
-		if isDomainBlacklisted {
 			continue
 		}
 
