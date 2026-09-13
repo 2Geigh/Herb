@@ -1,5 +1,5 @@
 name: "Herb"
-version: "0.2.1"
+version: "0.2.2"
 
 networks:
     # for creating & maintianing
@@ -29,8 +29,6 @@ services:
             interval: 10s
             timeout: 5s
             retries: 5
-        ports:
-            - "3020:5432"
 
     # backup:
     #     image: postgres:18.4-alpine
@@ -61,8 +59,6 @@ services:
                 condition: service_healthy
         env_file:
             - ./.env
-        ports:
-            - "3021:3001"
 
     query_engine:
         networks:
@@ -74,8 +70,6 @@ services:
         depends_on:
             db:
                 condition: service_healthy
-    #     ports:
-    #         - "3023:3003"
 
     ranking_engine:
         networks:
@@ -87,8 +81,6 @@ services:
         depends_on:
             db:
                 condition: service_healthy
-        # ports:
-        #     - "3022:3002"
 
     client:
         networks:
@@ -101,7 +93,7 @@ services:
             db:
                 condition: service_healthy
         ports:
-            - "3023:3003"
+            - "3020:3000"
 
 volumes:
     db-data:
