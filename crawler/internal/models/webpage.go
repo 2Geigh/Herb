@@ -5,6 +5,8 @@ import (
 	"database/sql/driver"
 	"encoding/json"
 	"fmt"
+	"net/http"
+	"strings"
 	"time"
 
 	"github.com/lib/pq"
@@ -170,6 +172,16 @@ func (p *Webpage) Scan(value any) error {
 	}
 
 	return json.Unmarshal(b, &p)
+}
+
+func (p *Webpage) EnqueueToIndexer() error {
+	resp, err := http.Post("http://indexer:3001/queue", "text/plain", strings.NewReader(string(p.Url)))
+	if err != nil {
+		return fmt.Errorf("POST to indexer failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	return nil
 }
 
 func (p *Webpage) Value() (driver.Value, error) {

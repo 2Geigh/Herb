@@ -2,32 +2,42 @@ import db
 from fastapi import FastAPI
 import uvicorn
 import asyncio
+import logging
+import sys
 
 local_queue: list[str] = []
+
+logging.basicConfig(
+    level=logging.INFO,
+    stream=sys.stdout,
+    format="%(levelname)s %(asctime)s %(name)s: %(message)s",
+    force=True,
+)
+
+logger = logging.getLogger(__name__)
 
 app = FastAPI()
 
 @app.get("/")
 def hello():
-    print("GET / recieved")
     return {"message": "I'm the indexer!"}
 
-@app.put("/queue")
+@app.post("/queue")
 def enqueue():
-    print("PUT /queue RECEIVED")
     return {"message": "PUT request recieved"}
 
 async def index() -> RuntimeError:
+
     while True:
-        print("Still indexing web pages...", flush=True)
+        logger.info("Still indexing web pages...")
         await asyncio.sleep(1.25)
 
 # def main():
-#     conn = db.connect()
 
-#     db.disconnect(conn)
 
 async def main() -> None:
+    conn = db.connect()
+
     indexing_task = asyncio.create_task(index())
 
     config = uvicorn.Config(
@@ -42,6 +52,7 @@ async def main() -> None:
     finally:
         indexing_task.cancel()
         await asyncio.gather(indexing_task, return_exceptions=True)
+        db.disconnect(conn)
 
 if __name__ == '__main__':
     asyncio.run(main())

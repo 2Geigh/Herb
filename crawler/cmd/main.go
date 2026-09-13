@@ -273,6 +273,12 @@ func crawl(wg *sync.WaitGroup) {
 
 		// log.Println()
 		log.Printf("[%s]", currentUrl)
+
+		err = page.EnqueueToIndexer()
+		if err != nil {
+			log.Printf("[%s] send to indexer failed: %v", currentUrl, err)
+			continue
+		}
 		// log.Println("crawler:       ", crawler_id)
 		// log.Println("iter:          ", *iterator)
 		// log.Println("url:           ", currentUrl)
