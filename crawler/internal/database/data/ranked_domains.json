@@ -6273,5 +6273,10 @@
 	{ "domain": "fb.com" },
 	{ "domain": "labs.google" },
 	{ "domain": "roblox.com" },
-	{ "domain": "coinbase.com" }
+	{ "domain": "coinbase.com" },
+	{ "domain": "dropbox.com" },
+	{ "domain": "archive.md" },
+	{ "domain": "archive.is" },
+	{ "domain": "archive.today" },
+	{ "domain": "archive.ph" }
 ]
