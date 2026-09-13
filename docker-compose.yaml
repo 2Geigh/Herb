@@ -50,7 +50,9 @@ services:
             - "3021:3000"
 
     query_engine:
-        image: amazoncorretto:26-alpine # OpenJDK distribution maintained by AWS
+        build:
+            context: ./query_engine
+            dockerfile: ./dockerfile
         container_name: herb-query_engine
         depends_on:
             db:

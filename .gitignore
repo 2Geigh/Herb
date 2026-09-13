@@ -4,3 +4,4 @@
 /indexer/lib/python3.9/site-packages
 /indexer/pyvenv.cfg
 /client/vendor
+/query_engine/target

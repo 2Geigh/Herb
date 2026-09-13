@@ -1,0 +1,17 @@
+ARG RUST_VERSION=1.93
+ARG APP_NAME=herb-query_engine
+
+FROM rust:1.93-alpine AS build
+
+WORKDIR /app
+
+COPY Cargo.toml Cargo.lock ./
+COPY src ./
+
+RUN cargo build --release
+
+FROM build AS final
+
+COPY --from=build /app/target/release/query_engine /bin/query_engine
+
+CMD ["/bin/query_engine"]
