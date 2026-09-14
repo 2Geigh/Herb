@@ -64,21 +64,15 @@ var (
 		models.Url("https://lwn.net/").TrimTrailingSlash(),
 		models.Url("https://fediring.net/").TrimTrailingSlash(),
 		models.Url("https://weirdweboctober.website/").TrimTrailingSlash(),
+		models.Url("https://recordsofenemysurveillance.com/").TrimTrailingSlash(),
 	}
 )
 
-func main() {
-	var (
-		wg sync.WaitGroup
-
-		startCrawler func()
-	)
-
+func init() {
 	err := database.InitializeDB()
 	if err != nil {
 		log.Fatalf("connect to database failed: %v", err)
 	}
-	defer database.DB.Close()
 
 	err = database.InitializeDomainBlacklist(database.DB)
 	if err != nil {
@@ -91,6 +85,16 @@ func main() {
 			log.Printf("enqueue seed URLs failed: %v", err)
 		}
 	}
+}
+
+func main() {
+	var (
+		wg sync.WaitGroup
+
+		startCrawler func()
+	)
+
+	defer database.DB.Close()
 
 	startCrawler = func() {
 		wg.Add(1)
