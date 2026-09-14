@@ -34,7 +34,6 @@ async def index() -> RuntimeError:
 
 # def main():
 
-
 async def main() -> None:
     conn = db.connect()
 
