@@ -16,15 +16,15 @@ type (
 	Webpage struct {
 		ResponseBody string `json:"response_body"`
 
-		FullDomain              Domain    `json:"full_domain"`
-		TopAndSecondLevelDomain Domain    `json:"top_and_second_level_domain"`
-		Url                     Url       `json:"Url"`
-		Title                   string    `json:"title"`
-		Description             string    `json:"description"`
-		Text                    string    `json:"text"`
-		Outneighbours           []Url     `json:"outneighbours"`
-		Date_discovered         time.Time `json:"date_discovered"`
-		Date_last_crawled       time.Time `json:"date_last_crawled"`
+		FullDomain        Domain    `json:"full_domain"`
+		Fqdn              Domain    `json:"fqdn"`
+		Url               Url       `json:"Url"`
+		Title             string    `json:"title"`
+		Description       string    `json:"description"`
+		Text              string    `json:"text"`
+		Outneighbours     []Url     `json:"outneighbours"`
+		Date_discovered   time.Time `json:"date_discovered"`
+		Date_last_crawled time.Time `json:"date_last_crawled"`
 	}
 )
 
@@ -79,7 +79,7 @@ func (page *Webpage) Save(db *sql.DB) error {
 	if !isSiteInDatabase {
 		stmt, err := tx.Prepare(
 			`INSERT INTO sites (
-				second_and_top_level_domain,
+				fqdn,
 				full_domain,
 				date_discovered,
 				date_last_crawled
@@ -92,7 +92,7 @@ func (page *Webpage) Save(db *sql.DB) error {
 		}
 
 		err = stmt.QueryRow(
-			page.TopAndSecondLevelDomain,
+			page.Fqdn,
 			page.FullDomain,
 			time.Now(),
 			time.Now(),

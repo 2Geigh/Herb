@@ -154,7 +154,7 @@ func crawl(wg *sync.WaitGroup) {
 		checkpoint = "set page.FullDomain"
 
 		page.
-			TopAndSecondLevelDomain = page.FullDomain.GetSecondAndTopLevelDomain()
+			Fqdn = page.FullDomain.GetFQDN()
 		checkpoint = "set page.TopAndSecondLevelDomain"
 
 		var (
@@ -170,7 +170,7 @@ func crawl(wg *sync.WaitGroup) {
 		}
 
 		hasDomainBeenRequestedTooRecently, err := page.
-			TopAndSecondLevelDomain.
+			Fqdn.
 			HasBeenRequestedTooRecently(
 				CRAWLER_POLITENESS_INTERVAL,
 				&database.DatabaseMu,
@@ -250,7 +250,7 @@ func crawl(wg *sync.WaitGroup) {
 		var (
 			isDomainBlacklisted bool
 		)
-		isDomainBlacklisted, err = page.TopAndSecondLevelDomain.IsBlacklisted(database.DB)
+		isDomainBlacklisted, err = page.Fqdn.IsBlacklisted(database.DB)
 		if err != nil {
 			log.Printf("[%s] determine domain blacklist status failed: %v", currentUrl, err)
 			continue
@@ -272,6 +272,7 @@ func crawl(wg *sync.WaitGroup) {
 		}
 
 		// log.Println()
+		// log.Println(page.Fqdn)
 		log.Printf("[%s]", currentUrl)
 
 		err = page.EnqueueToIndexer()

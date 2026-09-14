@@ -24,6 +24,8 @@ services:
         volumes:
             - db-data:/var/lib/herb
         healthcheck:
+            # Command for live tracking:
+            # watch -n 1 'psql -d herb -c "SELECT count(*) AS link_queue_count FROM link_queue; SELECT count(*) AS pages_count FROM pages; SELECT count(*) AS sites_count FROM sites;"'
             test: ["CMD", "pg_isready"]
             interval: 10s
             timeout: 5s

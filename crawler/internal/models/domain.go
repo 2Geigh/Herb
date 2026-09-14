@@ -6,13 +6,15 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	parser "github.com/Cgboal/DomainParser"
 )
 
 type (
 	Domain string
 )
 
-func (d Domain) GetSecondAndTopLevelDomain() Domain {
+func (d Domain) GetFQDN() Domain {
 	/*
 
 		>>> getDomain(https://www.youtube.com/watch?v=dQw4w9WgXcQ)
@@ -28,28 +30,14 @@ func (d Domain) GetSecondAndTopLevelDomain() Domain {
 
 	domainWithoutRoutes, _, _ := strings.Cut(string(domainWithoutProtocol), "/")
 
-	_, _, isDomainMultiLevel := strings.Cut(domainWithoutRoutes, ".")
-	if !isDomainMultiLevel {
-		return Domain(domainWithoutRoutes)
-	}
-
-	domainLevels := strings.Split(domainWithoutRoutes, ".")
-
-	topLevel := domainLevels[len(domainLevels)-1]
-
-	if len(topLevel) < 2 {
-		return Domain(topLevel)
-	}
-
-	secondLevel := domainLevels[len(domainLevels)-2]
-
-	return Domain(secondLevel + "." + topLevel)
+	parser := parser.NewDomainParser()
+	return Domain(parser.GetFQDN(string(domainWithoutRoutes)))
 }
 
 func (d Domain) HasBeenRequestedTooRecently(politeness_interval time.Duration, databaseMu *sync.Mutex, db *sql.DB) (bool, error) {
 	var (
-		secondAndTopLevelDomain = d.GetSecondAndTopLevelDomain()
-		lastCrawled             time.Time
+		fqdn        = d.GetFQDN()
+		lastCrawled time.Time
 
 		// better to be too
 		// polite than not nice enough
@@ -63,14 +51,14 @@ func (d Domain) HasBeenRequestedTooRecently(politeness_interval time.Duration, d
 	stmt, err := db.Prepare(
 		`SELECT date_last_crawled
 		FROM sites
-		WHERE second_and_top_level_domain = $1;`,
+		WHERE fqdn = $1;`,
 	)
 	if err != nil {
 		return hasBeenCrawledTooRecently, fmt.Errorf("prepare stmt failed: %w", err)
 	}
 	defer stmt.Close()
 
-	err = stmt.QueryRow(secondAndTopLevelDomain).Scan(&lastCrawled)
+	err = stmt.QueryRow(fqdn).Scan(&lastCrawled)
 	if err == sql.ErrNoRows {
 		hasBeenCrawledTooRecently = false
 	} else if err != nil {
@@ -86,14 +74,14 @@ func (d Domain) HasBeenRequestedTooRecently(politeness_interval time.Duration, d
 
 func (d Domain) IsBlacklisted(db *sql.DB) (bool, error) {
 	var (
-		secondAndTopLevelDomain = d.GetSecondAndTopLevelDomain()
+		fqdn = d.GetFQDN()
 
 		exists bool
 	)
 
 	err := db.QueryRow(
 		`SELECT EXISTS (SELECT 1 FROM domain_blacklist WHERE domain = $1);`,
-		secondAndTopLevelDomain,
+		fqdn,
 	).Scan(&exists)
 
 	if err != nil {

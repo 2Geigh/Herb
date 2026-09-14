@@ -1,3 +1,5 @@
+github.com/Cgboal/DomainParser v0.0.0-20210827145802-99068439e39f h1:M2XQFmJFYRW7om3/R3u1j+h97BGbMkRowFvfXJcyHPU=
+github.com/Cgboal/DomainParser v0.0.0-20210827145802-99068439e39f/go.mod h1:a0qCkWEjo4UooxH2Z1oU1kXc1wtyMIFYEpaLx8O5JyA=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/dustin/go-humanize v1.0.1 h1:GzkhY7T5VNhEkwH0PVJgjz+fX1rhBrR7pRT3mDkpeCY=

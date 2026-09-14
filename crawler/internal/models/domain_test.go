@@ -6,7 +6,7 @@ import (
 	"github.com/2Geigh/Herb/crawler/internal/models"
 )
 
-func TestDomain_GetSecondAndTopLevelDomain(t *testing.T) {
+func TestDomain_GetFQDN(t *testing.T) {
 	tests := []struct {
 		name  string
 		input models.Domain
@@ -65,12 +65,17 @@ func TestDomain_GetSecondAndTopLevelDomain(t *testing.T) {
 		{
 			name:  "Country-code domain",
 			input: models.Domain("https://www.example.co.uk"),
-			want:  models.Domain("co.uk"),
+			want:  models.Domain("example.co.uk"),
+		},
+		{
+			name:  "Country-code domain",
+			input: models.Domain("https://www.tatoeba.co.jp"),
+			want:  models.Domain("tatoeba.co.jp"),
 		},
 		{
 			name:  "Country-code domain with subdomain",
 			input: models.Domain("https://shop.example.co.uk/products"),
-			want:  models.Domain("co.uk"),
+			want:  models.Domain("example.co.uk"),
 		},
 		{
 			name:  "Empty URL",
@@ -86,11 +91,11 @@ func TestDomain_GetSecondAndTopLevelDomain(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := tt.input.GetSecondAndTopLevelDomain()
+			got := tt.input.GetFQDN()
 
 			if got != tt.want {
 				t.Errorf(
-					"GetSecondAndTopLevelDomain() = %q, want %q",
+					"GetFQDN() = %q, want %q",
 					got,
 					tt.want,
 				)

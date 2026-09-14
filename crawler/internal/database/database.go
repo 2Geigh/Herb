@@ -58,7 +58,7 @@ func DequeueLinks(db *sql.DB, mu *sync.Mutex) ([]models.Url, error) {
 
 	rows, err := tx.Query(
 		`WITH first_value AS (
-			SELECT second_and_top_level_domain AS value
+			SELECT fqdn AS value
 			FROM link_queue
 			ORDER BY id
 			LIMIT 1
@@ -68,7 +68,7 @@ func DequeueLinks(db *sql.DB, mu *sync.Mutex) ([]models.Url, error) {
 			SELECT t.id
 			FROM link_queue AS t
 			CROSS JOIN first_value AS f
-			WHERE t.second_and_top_level_domain IS NOT DISTINCT FROM f.value
+			WHERE t.fqdn IS NOT DISTINCT FROM f.value
 			ORDER BY t.id
 			LIMIT 1000
 		),
@@ -145,7 +145,7 @@ func EnqueueLinks(urls []models.Url, db *sql.DB, mu *sync.Mutex) error {
 
 		stmt, err := tx.Prepare(
 			`INSERT INTO link_queue (
-				hyperlink, second_and_top_level_domain
+				hyperlink, fqdn
 			) VALUES ($1, $2)
 			ON CONFLICT (hyperlink) DO NOTHING;`,
 		)
@@ -153,7 +153,7 @@ func EnqueueLinks(urls []models.Url, db *sql.DB, mu *sync.Mutex) error {
 			return fmt.Errorf("prepare statement failed: %w", err)
 		}
 
-		_, err = stmt.Exec(url, url.GetDomain().GetSecondAndTopLevelDomain())
+		_, err = stmt.Exec(url, url.GetDomain().GetFQDN())
 		if err != nil {
 			return fmt.Errorf("execute statement failed: %w", err)
 		}
