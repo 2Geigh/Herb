@@ -6,3 +6,7 @@
 /client/vendor
 /query_engine/target
 /indexer/__pycache__
+/services/indexer/lib/python3.9/site-packages
+/services/indexer/__pycache__
+/services/indexer/__pycache__
+/services/indexer/bin
