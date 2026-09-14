@@ -5,8 +5,9 @@ networks:
     # the searchable web database
     infrastructure:
 
-    # for handling the evaluation of,
-    # and response to, user search queries
+    # for handling the reception and
+    # evaluation of, and response to,
+    # user search queries
     userspace:
 
 services:
@@ -39,7 +40,7 @@ services:
         networks:
             - infrastructure
         build:
-            context: ./crawler
+            context: ./services/crawler
             dockerfile: ./build/dockerfile
         container_name: herb-crawler
         depends_on:
@@ -52,7 +53,7 @@ services:
         networks:
             - infrastructure
         build:
-            context: ./indexer
+            context: ./services/indexer
             dockerfile: ./dockerfile
         container_name: herb-indexer
         depends_on:
@@ -61,24 +62,24 @@ services:
         env_file:
             - ./.env
 
-    query_engine:
-        networks:
-            - "userspace"
-        build:
-            context: ./query_engine
-            dockerfile: ./dockerfile
-        container_name: herb-query_engine
-        depends_on:
-            db:
-                condition: service_healthy
-
     ranking_engine:
         networks:
             - infrastructure
         build:
-            context: ./ranking_engine
+            context: ./services/ranking_engine
             dockerfile: ./dockerfile
         container_name: herb-ranking_engine
+        depends_on:
+            db:
+                condition: service_healthy
+
+    query_engine:
+        networks:
+            - "userspace"
+        build:
+            context: ./services/query_engine
+            dockerfile: ./dockerfile
+        container_name: herb-query_engine
         depends_on:
             db:
                 condition: service_healthy
@@ -87,14 +88,23 @@ services:
         networks:
             - userspace
         build:
-            context: ./client
+            context: ./services/client
             dockerfile: ./dockerfile
         container_name: herb-client
         depends_on:
             db:
                 condition: service_healthy
+
+    server:
+        container_name: herb-server
+        image: nginx:stable-alpine-slim
+        networks:
+            - userspace
+        volumes:
+            - ./services/server/nginx.conf:/etc/nginx/nginx.conf:ro
+            - ./services/client:/var/www/html:ro
         ports:
-            - "3020:3000"
+            - "3020:80"
 
 volumes:
     db-data:

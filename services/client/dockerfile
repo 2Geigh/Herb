@@ -1,0 +1,15 @@
+FROM php:8.5-fpm-alpine
+
+WORKDIR /var/www/html
+
+RUN apk add --no-cache \
+        postgresql-libs \
+        postgresql-dev \
+    && docker-php-ext-install pdo_pgsql \
+    && apk del postgresql-dev
+
+COPY composer.json composer.lock ./
+COPY vendor ./vendor
+COPY public ./public
+
+CMD ["php-fpm", "-F"]
