@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Ohana | Surf The Indie Web</title>
-    <link rel="stylesheet" href="./assets/styles/index.css">
+    <link rel="stylesheet" href="/assets/styles/index.css">
 </head>
 
 <body>
