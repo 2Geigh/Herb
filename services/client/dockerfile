@@ -4,12 +4,21 @@ WORKDIR /var/www/html
 
 RUN apk add --no-cache \
         postgresql-libs \
+        nodejs \
+        npm \
+    && apk add --no-cache --virtual .php-build-deps \
         postgresql-dev \
     && docker-php-ext-install pdo_pgsql \
-    && apk del postgresql-dev
+    && apk del .php-build-deps
 
 COPY composer.json composer.lock ./
 COPY vendor ./vendor
 COPY public ./public
+
+RUN npm install --global sass \
+    && find public -type f -name '*.scss' \
+        -exec sh -c 'for file do sass --no-source-map "$file" "${file%.scss}.css"; done' sh {} + \
+    && npm uninstall --global sass \
+    && apk del nodejs npm
 
 CMD ["php-fpm", "-F"]
