@@ -68,9 +68,14 @@ func TestDomain_GetFQDN(t *testing.T) {
 			want:  models.Domain("example.co.uk"),
 		},
 		{
-			name:  "Country-code domain",
+			name:  "Country-code domain 1",
 			input: models.Domain("https://www.tatoeba.co.jp"),
 			want:  models.Domain("tatoeba.co.jp"),
+		},
+		{
+			name:  "Country-code domain 2",
+			input: models.Domain("https://www.amazon.com.cn"),
+			want:  models.Domain("amazon.com.cn"),
 		},
 		{
 			name:  "Country-code domain with subdomain",
