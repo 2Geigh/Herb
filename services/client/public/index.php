@@ -4,11 +4,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Herb | Search The Indie Web</title>
+    <title>Ohana | Surf The Indie Web</title>
+    <link rel="stylesheet" href="./assets/styles/index.css">
 </head>
 
 <body>
-    <h1>Herb</h1>
+    <h1>Ohana</h1>
 
     <form action="search" method="get">
         <input type="text" maxlength="255" required>

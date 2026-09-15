@@ -3,7 +3,7 @@ package models_test
 import (
 	"testing"
 
-	"github.com/2Geigh/Herb/crawler/internal/models"
+	"github.com/2Geigh/Ohana/crawler/internal/models"
 )
 
 func TestDomain_GetFQDN(t *testing.T) {

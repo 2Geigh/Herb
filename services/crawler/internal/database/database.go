@@ -9,7 +9,7 @@ import (
 	"os"
 	"sync"
 
-	"github.com/2Geigh/Herb/crawler/internal/models"
+	"github.com/2Geigh/Ohana/crawler/internal/models"
 	_ "github.com/lib/pq"
 	"github.com/pressly/goose/v3"
 )

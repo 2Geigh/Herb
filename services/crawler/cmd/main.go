@@ -12,8 +12,8 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/2Geigh/Herb/crawler/internal/database"
-	"github.com/2Geigh/Herb/crawler/internal/models"
+	"github.com/2Geigh/Ohana/crawler/internal/database"
+	"github.com/2Geigh/Ohana/crawler/internal/models"
 	"golang.org/x/net/html"
 	"golang.org/x/net/html/atom"
 )

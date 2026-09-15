@@ -1,4 +1,4 @@
-name: "Herb"
+name: "Ohana"
 
 networks:
     # for creating & maintianing
@@ -16,17 +16,17 @@ services:
             - infrastructure
             - userspace
         image: postgres:18.4-alpine
-        container_name: herb-db
+        container_name: ohana-db
         environment:
             PGUSER: ${DB_USERNAME}
             POSTGRES_PASSWORD: ${DB_PASSWORD}
             POSTGRES_DB: ${DB_NAME}
             POSTGRES_PORT: ${DB_CONTAINER_PORT}
         volumes:
-            - db-data:/var/lib/herb
+            - db-data:/var/lib/ohana
         healthcheck:
             # Command for live tracking:
-            # watch -n 1 'psql -d herb -c "SELECT count(*) AS link_queue_count FROM link_queue; SELECT count(*) AS pages_count FROM pages; SELECT count(*) AS sites_count FROM sites;"'
+            # watch -n 1 'psql -d ohana -c "SELECT count(*) AS link_queue_count FROM link_queue; SELECT count(*) AS pages_count FROM pages; SELECT count(*) AS sites_count FROM sites;"'
             test: ["CMD", "pg_isready"]
             interval: 10s
             timeout: 5s
@@ -34,7 +34,7 @@ services:
 
     # backup:
     #     image: postgres:18.4-alpine
-    #     container_name: herb-db-backup
+    #     container_name: ohana-db-backup
 
     crawler:
         networks:
@@ -42,7 +42,7 @@ services:
         build:
             context: ./services/crawler
             dockerfile: ./build/dockerfile
-        container_name: herb-crawler
+        container_name: ohana-crawler
         depends_on:
             db:
                 condition: service_healthy
@@ -55,7 +55,7 @@ services:
         build:
             context: ./services/indexer
             dockerfile: ./dockerfile
-        container_name: herb-indexer
+        container_name: ohana-indexer
         depends_on:
             db:
                 condition: service_healthy
@@ -68,7 +68,7 @@ services:
         build:
             context: ./services/ranking_engine
             dockerfile: ./dockerfile
-        container_name: herb-ranking_engine
+        container_name: ohana-ranking_engine
         depends_on:
             db:
                 condition: service_healthy
@@ -79,7 +79,7 @@ services:
         build:
             context: ./services/query_engine
             dockerfile: ./dockerfile
-        container_name: herb-query_engine
+        container_name: ohana-query_engine
         depends_on:
             db:
                 condition: service_healthy
@@ -90,13 +90,13 @@ services:
         build:
             context: ./services/client
             dockerfile: ./dockerfile
-        container_name: herb-client
+        container_name: ohana-client
         depends_on:
             db:
                 condition: service_healthy
 
     server:
-        container_name: herb-server
+        container_name: ohana-server
         image: nginx:stable-alpine-slim
         networks:
             - userspace

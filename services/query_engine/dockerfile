@@ -1,5 +1,5 @@
 ARG RUST_VERSION=1.93
-ARG APP_NAME=herb-query_engine
+ARG APP_NAME=ohana-query_engine
 
 FROM rust:1.93-alpine AS build
 
